@@ -71,3 +71,7 @@ remapJar {
 if (providers.gradleProperty('fxDebug').isPresent()) {
     apply from: 'fx-debug.gradle'
 }
+
+if (providers.gradleProperty('bossDebug').isPresent()) {
+    apply from: 'boss-debug.gradle'
+}

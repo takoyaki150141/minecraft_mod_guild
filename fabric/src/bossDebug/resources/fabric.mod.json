@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "guildquests_boss_debug",
+  "version": "1.0.0",
+  "name": "GuildQuests boss integration tests (test worlds only)",
+  "environment": "server",
+  "entrypoints": {"main": ["dev.guildquests.debug.BossDebugMod"]},
+  "depends": {"guildquests": "*", "fabric-api": "*", "minecraft": "1.20.1"}
+}

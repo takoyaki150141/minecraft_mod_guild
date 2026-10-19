@@ -34,6 +34,18 @@ public final class ModConfig {
     /** Max health of the emergency boss. */
     public double bossEventHealth = 300;
 
+    /** Normalize each participant's boss damage from live combat stats and actual damage. */
+    public boolean bossAdaptiveDifficultyEnabled = true;
+
+    /** Approximate full-strength attacks for a solo kill; progression still gives a bounded advantage. */
+    public int bossTargetPlayerHits = 80;
+
+    /** Base number of unarmored boss hits a full-health player can survive. */
+    public int bossPlayerSurvivalHits = 6;
+
+    /** Starts on respawn after boss combat, and ends early when the player attacks the boss. */
+    public int bossRespawnProtectionSeconds = 20;
+
     /** Allow paying Create shops (table cloth price tags set to guild coins) from the virtual balance. */
     public boolean createIntegrationEnabled = true;
 

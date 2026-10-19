@@ -60,8 +60,12 @@ Minecraft 1.20.1 の Fabric / Forge 向けに、クエスト、ギルド通貨�
 - プレイヤーがオンラインのとき、一定間隔で確率発生する
 - 強化したホスト Mob が出現する（グラウ効果とダイヤ装備）
 - 与えたダメージに応じて報酬を分配する
+- 攻撃力・最大HP・防具・効果と実際のダメージから、参加者ごとに難易度を調整する
+- ボス戦後の復活には20秒の保護が付く（ボスへの攻撃で解除）
 - 環境ダメージによる撃破は無効
 - クライアント側にボス位置ピンを表示する
+
+調整方法と検証手順は [BOSS_DIFFICULTY.md](BOSS_DIFFICULTY.md) を参照してください。
 
 ### 管理者向け
 
@@ -165,6 +169,10 @@ config/guildquests/server-update.json  # Fabric / Forge 専用サーバー
 - `bossEventChancePercent`: ボス出現の確率（%）
 - `bossEventReward`: ボス撃破の報酬（コイン）
 - `bossEventHealth`: ボスの体力
+- `bossAdaptiveDifficultyEnabled`: プレイヤーごとの難易度調整（既定は `true`）
+- `bossTargetPlayerHits`: 単独討伐に必要な攻撃回数の基準（既定は80）
+- `bossPlayerSurvivalHits`: 防具なしでボスの標準攻撃を受ける回数の基準（既定は6）
+- `bossRespawnProtectionSeconds`: ボス戦後の復活保護の秒数（既定は20、0で無効）
 - `bankFeePercent`: 銀行の手数料（%）
 - `riboInstallment`: リボの1回あたりの徴収額
 - `riboInterestPercent`: リボの周期利息（%）

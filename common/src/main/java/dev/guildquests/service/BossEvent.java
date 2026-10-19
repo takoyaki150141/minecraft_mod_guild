@@ -48,7 +48,7 @@ import java.util.UUID;
  */
 public final class BossEvent {
     private static final Random RANDOM = new Random();
-    private static final String BOSS_TAG = "guildquests_emergency_boss";
+    private static final String BOSS_TAG = BossCombat.BOSS_TAG;
     private static final int TICKS_PER_MINUTE = 1200;
     /** S2C: show/clear the client-side boss pin (x,y,z + lifetime ticks; lifetime 0 = clear). */
     public static final ResourceLocation BOSS_PIN = new ResourceLocation("guildquests", "boss_pin");
@@ -87,14 +87,17 @@ public final class BossEvent {
 
     public static void init() {
         Platform.onServerTick(BossEvent::tick);
+        Platform.onServerStopped(server -> { clearBoss(); BossCombat.reset(); ticker = 0; markerLife = 0; });
         Platform.onAllowDamage((entity, source, amount) -> {
+            if (!BossCombat.allowDamage(entity, source)) return false;
             // Environmental kill cheese (lava, void, fall, etc.) is ignored for the boss.
-            if (entity.getTags().contains(BOSS_TAG) && isEnvironmental(source)) {
+            if (entity.getTags().contains(BOSS_TAG) && !(BossCombat.owner(source) instanceof ServerPlayer)
+                    && isEnvironmental(source)) {
                 return false;
             }
-            onDamage(entity, source, amount);
             return true;
         });
+        Platform.onEntityDeath(BossCombat::onDeath);
         Platform.onEntityDeath(BossEvent::onDeath);
     }
 
@@ -120,6 +123,11 @@ public final class BossEvent {
     }
 
     private static void tick(MinecraftServer server) {
+        BossCombat.tick(server);
+        if (boss instanceof Mob mob && mob.getTarget() instanceof ServerPlayer player && BossCombat.isProtected(player)) {
+            mob.setTarget(null);
+            mob.getNavigation().stop();
+        }
         ModConfig config = ConfigManager.config();
         if (!config.bossEventEnabled) {
             ticker = 0;
@@ -181,8 +189,9 @@ public final class BossEvent {
                     int tx;
                     int tz;
                     if (target != null) {
-                        tx = Mth.floor(target.getX());
-                        tz = Mth.floor(target.getZ());
+                        double angle = RANDOM.nextDouble() * Math.PI * 2;
+                        tx = Mth.floor(target.getX() + Math.cos(angle) * 12);
+                        tz = Mth.floor(target.getZ() + Math.sin(angle) * 12);
                     } else {
                         tx = Mth.floor(boss.getX());
                         tz = Mth.floor(boss.getZ());
@@ -236,7 +245,9 @@ public final class BossEvent {
             }
         }
 
-        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+        List<ServerPlayer> players = server.getPlayerList().getPlayers().stream()
+                .filter(p -> p.level() == world && p.isAlive() && !p.isSpectator() && !BossCombat.isProtected(p))
+                .toList();
         if (players.isEmpty()) return false;
         ServerPlayer anchor = players.get(RANDOM.nextInt(players.size()));
         double angle = RANDOM.nextDouble() * Math.PI * 2.0;
@@ -274,6 +285,7 @@ public final class BossEvent {
         // Show a client-rendered pin at the boss location (5 minutes or until death).
         damage.clear();
         damageNames.clear();
+        BossCombat.beginEncounter();
         adopt(mob);
         markerLife = 6000;
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
@@ -292,6 +304,7 @@ public final class BossEvent {
         double bestDist = Double.MAX_VALUE;
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             if (p.isRemoved() || !p.isAlive()) continue;
+            if (p.isCreative() || p.isSpectator() || BossCombat.isProtected(p)) continue;
             if (p.level() != from.level()) continue;
             double d = p.distanceToSqr(from);
             if (d < bestDist) {
@@ -355,12 +368,10 @@ public final class BossEvent {
         }
     }
 
-    private static void onDamage(LivingEntity entity, DamageSource source, float amount) {
+    public static void recordDamage(LivingEntity entity, ServerPlayer attacker, float amount) {
         if (!entity.getTags().contains(BOSS_TAG)) return;
-        if (!(source.getEntity() instanceof ServerPlayer attacker)) return;
-        // Skip hits vanilla will reject: hurt cooldown (spam-click) or already dead.
-        if (entity.invulnerableTime > 10 && !source.is(net.minecraft.tags.DamageTypeTags.BYPASSES_COOLDOWN)) return;
-        if (entity.isDeadOrDying()) return;
+        if (!(amount > 0) || !Float.isFinite(amount) || entity.isDeadOrDying()) return;
+        // This runs inside actuallyHurt: rejected hits, absorption and overkill earn no credit.
         damage.merge(attacker.getUUID(), (double) amount, Double::sum);
         damageNames.put(attacker.getUUID(), attacker.getName().getString());
         if (boss == null || boss.isRemoved() || !boss.isAlive()) adopt(entity);
@@ -425,6 +436,7 @@ public final class BossEvent {
     }
 
     private static void adopt(LivingEntity entity) {
+        if (bar != null) bar.removeAllPlayers();
         boss = entity;
         stuckTicks = 0;
         if (entity.getCustomName() != null) {

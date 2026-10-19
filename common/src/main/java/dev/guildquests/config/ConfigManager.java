@@ -84,7 +84,10 @@ public final class ConfigManager {
         c.bossEventIntervalMinutes = Math.max(1, Math.min(1440, c.bossEventIntervalMinutes));
         c.bossEventChancePercent = Math.max(0, Math.min(100, c.bossEventChancePercent));
         c.bossEventReward = Math.max(0, c.bossEventReward);
-        c.bossEventHealth = Math.max(1, Math.min(100000, c.bossEventHealth));
+        c.bossEventHealth = Math.max(1, Math.min(1_000_000_000, Double.isFinite(c.bossEventHealth) ? c.bossEventHealth : 300));
+        c.bossTargetPlayerHits = Math.max(20, Math.min(1000, c.bossTargetPlayerHits));
+        c.bossPlayerSurvivalHits = Math.max(4, Math.min(40, c.bossPlayerSurvivalHits));
+        c.bossRespawnProtectionSeconds = Math.max(0, Math.min(300, c.bossRespawnProtectionSeconds));
         c.bankFeePercent = Math.max(0, Math.min(100, c.bankFeePercent));
         c.riboInstallment = Math.max(1, c.riboInstallment);
         c.riboInterestPercent = Math.max(0, Math.min(100, c.riboInterestPercent));

@@ -1,0 +1,28 @@
+// Opt-in integration tests. Neither these classes nor their mod metadata enter the release jar.
+sourceSets {
+    bossDebug {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+tasks.register('bossDebugJar', Jar) {
+    archiveBaseName = 'guildquests-boss-debug'
+    archiveClassifier = 'dev'
+    from sourceSets.bossDebug.output
+}
+
+// Applied scripts do not inherit the Loom plugin's classloader.
+def remapTaskType = tasks.named('remapJar').get().getClass().getSuperclass()
+tasks.register('remapBossDebugJar', remapTaskType) {
+    dependsOn tasks.named('bossDebugJar')
+    inputFile.set(tasks.named('bossDebugJar').flatMap { it.archiveFile })
+    archiveBaseName = 'guildquests-boss-debug'
+    archiveClassifier = ''
+}
+
+loom {
+    mods {
+        guildquests_boss_debug { sourceSet sourceSets.bossDebug }
+    }
+}
