@@ -42,17 +42,28 @@ public final class BossDifficulty {
         return Math.min(health / Math.max(4, survivalHits) * quality * pressure, health / 4);
     }
 
-    /** A per-player 20-tick window also bounds multi-hit weapons and bypassed cooldowns. */
+    /** A true sliding 20-tick budget: a window boundary cannot double the burst allowance. */
     public static final class Budget {
-        private long start = Long.MIN_VALUE;
+        private record Spent(long tick, double amount) { }
+        private final java.util.Deque<Spent> history = new java.util.ArrayDeque<>();
+        private long lastTick = Long.MIN_VALUE;
         private double spent;
 
         public double take(long tick, double amount, double limit) {
-            if (start == Long.MIN_VALUE || tick < start || tick - start >= 20) {
-                start = tick;
+            if (tick < lastTick) {
+                history.clear();
                 spent = 0;
             }
+            lastTick = tick;
+            while (!history.isEmpty() && tick - history.getFirst().tick() >= 20) {
+                spent = Math.max(0, spent - history.removeFirst().amount());
+            }
+            if (history.isEmpty()) spent = 0;
             double accepted = Math.max(0, Math.min(nonnegative(amount), nonnegative(limit) - spent));
+            if (accepted <= 0) return 0;
+            if (!history.isEmpty() && history.getLast().tick() == tick) {
+                history.addLast(new Spent(tick, history.removeLast().amount() + accepted));
+            } else history.addLast(new Spent(tick, accepted));
             spent += accepted;
             return accepted;
         }

@@ -89,7 +89,7 @@ public final class BossEvent {
         Platform.onServerTick(BossEvent::tick);
         Platform.onServerStopped(server -> { clearBoss(); BossCombat.reset(); BossProjectiles.reset(); ticker = 0; markerLife = 0; });
         Platform.onAllowDamage((entity, source, amount) -> {
-            if (!BossCombat.allowDamage(entity, source)) return false;
+            if (!BossCombat.allowDamage(entity, source, amount)) return false;
             // Environmental kill cheese (lava, void, fall, etc.) is ignored for the boss.
             if (entity.getTags().contains(BOSS_TAG) && !(BossCombat.owner(source) instanceof ServerPlayer)
                     && isEnvironmental(source)) {
@@ -115,6 +115,8 @@ public final class BossEvent {
                 || source.is(DamageTypes.SWEET_BERRY_BUSH)
                 || source.is(DamageTypes.IN_WALL)
                 || source.is(DamageTypes.FALLING_BLOCK)
+                || source.is(DamageTypes.FALLING_ANVIL)
+                || source.is(DamageTypes.FALLING_STALACTITE)
                 || source.is(DamageTypes.MAGIC)
                 || source.is(DamageTypes.WITHER)
                 || source.is(DamageTypes.DRAGON_BREATH)
@@ -226,6 +228,21 @@ public final class BossEvent {
         int chance = Math.max(0, Math.min(100, config.bossEventChancePercent));
         if (RANDOM.nextInt(100) >= chance) return;
         spawnNow(server);
+    }
+
+    /** Operators can remove a protected boss without creating damage or distributing rewards. */
+    public static boolean stopNow(MinecraftServer server) {
+        List<Entity> targets = new ArrayList<>();
+        for (ServerLevel world : server.getAllLevels()) {
+            world.getAllEntities().forEach(entity -> { if (BossCombat.isBoss(entity)) targets.add(entity); });
+        }
+        if (boss != null && !boss.isRemoved() && !targets.contains(boss)) targets.add(boss);
+        if (targets.isEmpty()) return false;
+        targets.forEach(Entity::discard);
+        clearBossPins(server);
+        clearBoss();
+        ticker = 0;
+        return true;
     }
 
     /**

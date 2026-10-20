@@ -108,6 +108,9 @@ public final class BossCombat {
         ModConfig config = ConfigManager.config();
         Entity attacker = owner(source);
         int now = victim.getServer().getTickCount();
+        // Do not let ownerless projectiles, offline/unresolved owners, falling blocks or
+        // a new modded damage type bypass adaptation by missing the player branch below.
+        if (isBoss(victim) && config.bossAdaptiveDifficultyEnabled && !(attacker instanceof ServerPlayer)) return 0;
         if (!(amount > 0) || !Float.isFinite(amount)) {
             return isBoss(victim) || isBoss(attacker) ? 0 : amount;
         }
@@ -145,12 +148,19 @@ public final class BossCombat {
 
     public static boolean allowDamage(LivingEntity victim, DamageSource source) {
         Entity attacker = owner(source);
+        if (isBoss(victim) && ConfigManager.config().bossAdaptiveDifficultyEnabled
+                && !(attacker instanceof ServerPlayer)) return false;
         if (victim instanceof ServerPlayer player && isProtected(player)
                 && (isBoss(attacker) || isResidual(player, source, player.getServer().getTickCount()))) return false;
         if (isBoss(victim) && attacker instanceof ServerPlayer player && BossProjectiles.intentional(source, player)) {
             protectedUntil.remove(player.getUUID());
         }
         return true;
+    }
+
+    public static boolean allowDamage(LivingEntity victim, DamageSource source, float amount) {
+        if (isBoss(victim) && (!(amount > 0) || !Float.isFinite(amount))) return false;
+        return allowDamage(victim, source);
     }
 
     public static boolean allowEffect(LivingEntity victim, MobEffectInstance effect, Entity source) {

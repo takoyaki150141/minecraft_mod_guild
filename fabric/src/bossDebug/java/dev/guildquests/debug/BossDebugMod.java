@@ -198,6 +198,7 @@ public final class BossDebugMod implements ModInitializer {
         ConfigManager.config().bossAdaptiveDifficultyEnabled = true;
 
         new BossProjectileChecks(world, rookie, this::boss, this::check).run();
+        new BossExploitChecks(world, rookie, this::boss, this::check).run();
 
         ConfigManager.config().bossRespawnProtectionSeconds = 1;
         Arrow beforeDeath = new Arrow(world, rookie);

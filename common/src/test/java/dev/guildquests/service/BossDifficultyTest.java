@@ -72,4 +72,35 @@ public class BossDifficultyTest {
         assertEquals(10, budget.take(1000, 10, 10), 0);
         assertEquals(10, budget.take(1, 10, 10), 0);
     }
+
+    @Test public void windowBoundaryCannotDoubleBurstDamage() {
+        var budget = new BossDifficulty.Budget();
+        assertEquals(1, budget.take(100, 1, 75000), 0);
+        assertEquals(74999, budget.take(119, 75000, 75000), 0);
+        assertEquals(1, budget.take(120, 75000, 75000), 0);
+        assertEquals(0, budget.take(138, 75000, 75000), 0);
+        assertEquals(74999, budget.take(139, 75000, 75000), 0);
+    }
+
+    @Test public void everySlidingSecondStaysWithinLimitUnderSustainedSpam() {
+        var budget = new BossDifficulty.Budget();
+        double[] totals = new double[200];
+        for (int tick = 0; tick < totals.length; tick++) {
+            for (int hit = 0; hit < 100; hit++) totals[tick] += budget.take(tick, tick % 3 == 0 ? 1 : 1e30, 75000);
+            double window = 0;
+            for (int recent = Math.max(0, tick - 19); recent <= tick; recent++) window += totals[recent];
+            assertTrue("sliding second at tick " + tick, window <= 75000 + 1e-6);
+        }
+    }
+
+    @Test public void invalidNumbersAndLimitChangesCannotCreateCredit() {
+        var budget = new BossDifficulty.Budget();
+        assertEquals(0, budget.take(1, Double.POSITIVE_INFINITY, 10), 0);
+        assertEquals(0, budget.take(1, -10, 10), 0);
+        assertEquals(8, budget.take(1, 8, 10), 0);
+        assertEquals(0, budget.take(2, 10, 5), 0);
+        assertEquals(2, budget.take(2, 10, 10), 0);
+        assertEquals(8, budget.take(21, 10, 10), 0);
+        assertEquals(0, budget.take(21, 10, Double.NaN), 0);
+    }
 }

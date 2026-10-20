@@ -150,6 +150,12 @@ public final class GuildQuestsMod {
                     }));
 
             guildAdmin.then(Commands.literal("boss")
+                    .then(Commands.literal("stop").executes(context -> {
+                        boolean stopped = BossEvent.stopNow(context.getSource().getServer());
+                        context.getSource().sendSuccess(() -> Component.literal(stopped
+                                ? "緊急ボスを報酬なしで終了しました。" : "終了できる緊急ボスはいません。"), true);
+                        return stopped ? 1 : 0;
+                    }))
                     .executes(context -> {
                         boolean spawned = BossEvent.spawnNow(context.getSource().getServer());
                         boolean result = spawned;
