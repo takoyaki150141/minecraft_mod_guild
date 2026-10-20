@@ -7,6 +7,9 @@
     "LivingBossEffectMixin",
     "LivingBossDamageMixin",
     "PlayerBossDamageMixin",
+    "LivingEquipmentAccessor",
+    "BossProjectileMixin",
+    "BossProjectileTickMixin",
     "BossTargetMixin",
     "StockTickerInteractionHandlerMixin"
   ],

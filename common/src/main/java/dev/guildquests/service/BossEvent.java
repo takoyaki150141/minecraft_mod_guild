@@ -87,7 +87,7 @@ public final class BossEvent {
 
     public static void init() {
         Platform.onServerTick(BossEvent::tick);
-        Platform.onServerStopped(server -> { clearBoss(); BossCombat.reset(); ticker = 0; markerLife = 0; });
+        Platform.onServerStopped(server -> { clearBoss(); BossCombat.reset(); BossProjectiles.reset(); ticker = 0; markerLife = 0; });
         Platform.onAllowDamage((entity, source, amount) -> {
             if (!BossCombat.allowDamage(entity, source)) return false;
             // Environmental kill cheese (lava, void, fall, etc.) is ignored for the boss.

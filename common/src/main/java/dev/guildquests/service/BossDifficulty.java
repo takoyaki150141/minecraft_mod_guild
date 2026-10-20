@@ -42,7 +42,7 @@ public final class BossDifficulty {
         return Math.min(health / Math.max(4, survivalHits) * quality * pressure, health / 4);
     }
 
-    /** A per-player rolling second budget also bounds multi-hit weapons and bypassed cooldowns. */
+    /** A per-player 20-tick window also bounds multi-hit weapons and bypassed cooldowns. */
     public static final class Budget {
         private long start = Long.MIN_VALUE;
         private double spent;

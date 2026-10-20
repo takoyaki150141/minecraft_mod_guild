@@ -70,19 +70,21 @@ public final class BossCombat {
         int guildLevel = BossDifficulty.guildLevel(GuildService.data(player).completedTotal,
                 ConfigManager.config().rankThresholds.values());
         return new BossDifficulty.Profile(guildLevel,
-                player.getAttributeValue(Attributes.ATTACK_DAMAGE), player.getAttributeValue(Attributes.ATTACK_SPEED),
-                player.getMaxHealth(), player.getArmorValue(), player.getAttributeValue(Attributes.ARMOR_TOUGHNESS),
+                BossEquipment.value(player, Attributes.ATTACK_DAMAGE), BossEquipment.value(player, Attributes.ATTACK_SPEED),
+                BossEquipment.value(player, Attributes.MAX_HEALTH), BossEquipment.value(player, Attributes.ARMOR),
+                BossEquipment.value(player, Attributes.ARMOR_TOUGHNESS),
                 beneficial, harmful);
     }
 
     private static double attack(LivingEntity entity, LivingEntity target) {
         double value = entity.getAttribute(Attributes.ATTACK_DAMAGE) == null ? 6
-                : entity.getAttributeValue(Attributes.ATTACK_DAMAGE);
+                : BossEquipment.value(entity, Attributes.ATTACK_DAMAGE);
         return BossDifficulty.positive(value + EnchantmentHelper.getDamageBonus(entity.getMainHandItem(), target.getMobType()), 1);
     }
 
-    private static double expectedPlayerHit(ServerPlayer player, LivingEntity target, DamageSource source) {
-        float value = (float) Math.min(Float.MAX_VALUE, attack(player, target));
+    private static double expectedPlayerHit(ServerPlayer player, LivingEntity target, DamageSource source, BossAttackSnapshot shot) {
+        double reference = BossProjectiles.ranged(source, player, shot) ? BossProjectiles.REFERENCE_DAMAGE : attack(player, target);
+        float value = (float) Math.min(Float.MAX_VALUE, reference);
         if (!source.is(DamageTypeTags.BYPASSES_ARMOR)) {
             value = CombatRules.getDamageAfterAbsorb(value, target.getArmorValue(),
                     (float) target.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
@@ -110,12 +112,13 @@ public final class BossCombat {
             return isBoss(victim) || isBoss(attacker) ? 0 : amount;
         }
         if (isBoss(victim) && attacker instanceof ServerPlayer player) {
-            if (player.isAlive()) protectedUntil.remove(player.getUUID());
+            if (BossProjectiles.intentional(source, player)) protectedUntil.remove(player.getUUID());
             lastContact.put(player.getUUID(), now);
             double dealt = amount;
             if (config.bossAdaptiveDifficultyEnabled) {
-                dealt = BossDifficulty.outgoing(amount, expectedPlayerHit(player, victim, source),
-                        victim.getMaxHealth(), config.bossTargetPlayerHits, profile(player));
+                BossAttackSnapshot shot = BossProjectiles.attack(source, player);
+                dealt = BossDifficulty.outgoing(amount, expectedPlayerHit(player, victim, source, shot),
+                        victim.getMaxHealth(), config.bossTargetPlayerHits, shot == null ? profile(player) : shot.profile());
                 dealt = outgoing.computeIfAbsent(player.getUUID(), id -> new BossDifficulty.Budget())
                         .take(now, dealt, victim.getMaxHealth() * 2.0 / config.bossTargetPlayerHits);
             }
@@ -144,7 +147,9 @@ public final class BossCombat {
         Entity attacker = owner(source);
         if (victim instanceof ServerPlayer player && isProtected(player)
                 && (isBoss(attacker) || isResidual(player, source, player.getServer().getTickCount()))) return false;
-        if (isBoss(victim) && attacker instanceof ServerPlayer player && player.isAlive()) protectedUntil.remove(player.getUUID());
+        if (isBoss(victim) && attacker instanceof ServerPlayer player && BossProjectiles.intentional(source, player)) {
+            protectedUntil.remove(player.getUUID());
+        }
         return true;
     }
 
@@ -195,6 +200,7 @@ public final class BossCombat {
             return true;
         });
         if (now % 200 != 0) return;
+        BossProjectiles.clean();
         protectedUntil.values().removeIf(until -> until <= now);
         lastContact.entrySet().removeIf(entry -> {
             if (now - (long) entry.getValue() < 1200) return false;

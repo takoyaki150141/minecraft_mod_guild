@@ -60,6 +60,7 @@ public final class BossDebugMod implements ModInitializer {
             world.getGameRules().getRule(GameRules.RULE_KEEPINVENTORY).set(true, server);
             rookie = player(server, "BossBeginner");
             veteran = player(server, "BossVeteran");
+            rookie.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.DIAMOND_SWORD));
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             try {
@@ -196,7 +197,12 @@ public final class BossDebugMod implements ModInitializer {
                 "disabled adaptation matches an identical untagged mob");
         ConfigManager.config().bossAdaptiveDifficultyEnabled = true;
 
+        new BossProjectileChecks(world, rookie, this::boss, this::check).run();
+
         ConfigManager.config().bossRespawnProtectionSeconds = 1;
+        Arrow beforeDeath = new Arrow(world, rookie);
+        net.minecraft.nbt.CompoundTag savedArrow = new net.minecraft.nbt.CompoundTag();
+        beforeDeath.saveWithoutId(savedArrow);
         reset(rookie); rookie.setHealth(.1f); rookie.hurt(world.damageSources().mobAttack(boss), 1000);
         check(!rookie.isAlive(), "boss can still defeat an injured player");
         respawned = server.getPlayerList().respawn(rookie, false);
@@ -208,6 +214,11 @@ public final class BossDebugMod implements ModInitializer {
         check(!BossCombat.allowEffect(respawned, new MobEffectInstance(MobEffects.POISON, 100, 1), boss), "respawn protection blocks boss debuffs");
         boss.setTarget(respawned);
         check(boss.getTarget() != respawned, "boss cannot target protected respawn");
+        // Reloaded projectiles resolve their owner to the new player entity after respawn.
+        Arrow delayed = new Arrow(world, respawned); delayed.load(savedArrow);
+        boss = bossWithoutResettingProtection();
+        boss.hurt(world.damageSources().arrow(delayed, respawned), 6);
+        check(BossCombat.isProtected(respawned), "pre-death projectile cannot cancel respawn protection");
         hit(boss, respawned, 1);
         check(!BossCombat.isProtected(respawned), "attacking ends respawn protection");
         // Exercise the death handler again to check natural expiry on subsequent server ticks.
@@ -216,6 +227,14 @@ public final class BossDebugMod implements ModInitializer {
         BossCombat.tick(server);
         check(BossCombat.isProtected(respawned), "expiry test starts with active protection");
         expiry = server.getTickCount() + 22;
+    }
+
+    private Zombie bossWithoutResettingProtection() {
+        Zombie boss = EntityType.ZOMBIE.create(world);
+        boss.addTag(BossCombat.BOSS_TAG); boss.setNoAi(true);
+        boss.getAttribute(Attributes.MAX_HEALTH).setBaseValue(3_000_000);
+        boss.setHealth(boss.getMaxHealth());
+        return boss;
     }
 
     private Zombie boss() throws Exception {
@@ -229,18 +248,25 @@ public final class BossDebugMod implements ModInitializer {
         chest.enchant(Enchantments.ALL_DAMAGE_PROTECTION, 4);
         boss.setItemSlot(EquipmentSlot.CHEST, chest);
         world.addFreshEntity(boss);
+        boss.getRandom().setSeed(12345);
         testBoss = boss;
         return boss;
     }
 
     private void resetBoss() throws Exception {
         if (testBoss != null) testBoss.discard();
+        // Failed earlier runs may have saved persistent fixture bosses in this disposable world.
+        // King's Law explosions must not consume the player's budget on those old targets.
+        var leftovers = new ArrayList<net.minecraft.world.entity.Entity>();
+        world.getAllEntities().forEach(entity -> { if (BossCombat.isBoss(entity)) leftovers.add(entity); });
+        leftovers.forEach(net.minecraft.world.entity.Entity::discard);
         var clear = BossEvent.class.getDeclaredMethod("clearBoss"); clear.setAccessible(true); clear.invoke(null);
         BossCombat.reset();
     }
 
     private void reset(ServerPlayer player) {
         BossCombat.reset(); player.removeAllEffects(); player.clearFire();
+        player.getRandom().setSeed(12345);
         player.setAbsorptionAmount(0); player.invulnerableTime = 0;
         for (EquipmentSlot slot : EquipmentSlot.values()) player.setItemSlot(slot, ItemStack.EMPTY);
         player.setHealth(player.getMaxHealth());
@@ -248,6 +274,7 @@ public final class BossDebugMod implements ModInitializer {
 
     private void hit(Zombie boss, ServerPlayer player, float amount) {
         boss.invulnerableTime = 0;
+        boss.getRandom().setSeed(12345);
         boss.hurt(world.damageSources().playerAttack(player), amount);
     }
 
