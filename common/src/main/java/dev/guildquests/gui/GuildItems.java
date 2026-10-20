@@ -76,9 +76,12 @@ public final class GuildItems {
         if (ownerName != null && !ownerName.isEmpty()) skull.putString("Name", ownerName);
         if (ownerId != null) skull.putUUID("Id", ownerId);
         if (textureValue != null) {
+            // Vanilla (NbtUtils#readGameProfile) reads the property value from the "Value" key
+            // and takes the property *name* from the enclosing map key, so the inner tag must
+            // not repeat "name" and must use a capital "Value" — otherwise the client sees an
+            // empty texture value and falls back to the default Steve/Alex head.
             CompoundTag property = new CompoundTag();
-            property.putString("name", "textures");
-            property.putString("value", textureValue);
+            property.putString("Value", textureValue);
             ListTag textures = new ListTag();
             textures.add(property);
             CompoundTag properties = new CompoundTag();

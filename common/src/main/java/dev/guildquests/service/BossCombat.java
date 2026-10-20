@@ -27,7 +27,8 @@ import java.util.UUID;
 /** Server-only adaptation of accepted, post-mitigation health damage. */
 public final class BossCombat {
     public static final String BOSS_TAG = "guildquests_emergency_boss";
-    private static final Map<UUID, BossDifficulty.Budget> outgoing = new HashMap<>();
+    // Boss -> player -> rolling budget. Different boss HP pools must never share absolute HP units.
+    private static final Map<UUID, Map<UUID, BossDifficulty.Budget>> outgoing = new HashMap<>();
     private static final Map<UUID, BossDifficulty.Budget> incoming = new HashMap<>();
     private static final Map<UUID, Integer> protectedUntil = new HashMap<>();
     private static final Map<UUID, Integer> lastContact = new HashMap<>();
@@ -122,7 +123,8 @@ public final class BossCombat {
                 BossAttackSnapshot shot = BossProjectiles.attack(source, player);
                 dealt = BossDifficulty.outgoing(amount, expectedPlayerHit(player, victim, source, shot),
                         victim.getMaxHealth(), config.bossTargetPlayerHits, shot == null ? profile(player) : shot.profile());
-                dealt = outgoing.computeIfAbsent(player.getUUID(), id -> new BossDifficulty.Budget())
+                dealt = outgoing.computeIfAbsent(victim.getUUID(), id -> new HashMap<>())
+                        .computeIfAbsent(player.getUUID(), id -> new BossDifficulty.Budget())
                         .take(now, dealt, victim.getMaxHealth() * 2.0 / config.bossTargetPlayerHits);
             }
             float after = Math.max(0, victim.getHealth() - (float) Math.min(victim.getHealth(), dealt));
@@ -214,10 +216,11 @@ public final class BossCombat {
         protectedUntil.values().removeIf(until -> until <= now);
         lastContact.entrySet().removeIf(entry -> {
             if (now - (long) entry.getValue() < 1200) return false;
-            outgoing.remove(entry.getKey());
+            outgoing.values().forEach(players -> players.remove(entry.getKey()));
             incoming.remove(entry.getKey());
             return true;
         });
+        outgoing.values().removeIf(Map::isEmpty);
         residual.values().forEach(effects -> effects.values().removeIf(until -> until <= now));
         residual.values().removeIf(Map::isEmpty);
     }
@@ -226,8 +229,8 @@ public final class BossCombat {
         outgoing.clear(); incoming.clear(); protectedUntil.clear(); lastContact.clear(); pendingRespawn.clear(); residual.clear();
     }
 
-    public static void beginEncounter() {
-        outgoing.clear();
-        incoming.clear();
+    public static void forgetBoss(UUID boss) {
+        // Removing or spawning one boss must not refresh other fights or the shared incoming cap.
+        outgoing.remove(boss);
     }
 }

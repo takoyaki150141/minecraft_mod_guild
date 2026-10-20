@@ -64,6 +64,7 @@ Minecraft 1.20.1 の Fabric / Forge 向けに、クエスト、ギルド通貨�
 - ボス戦後の復活には20秒の保護が付く（ボスへの攻撃で解除）
 - 環境ダメージによる撃破は無効
 - クライアント側にボス位置ピンを表示する
+- 管理コマンド `/guildadmin boss [count]` で同時に複数体（最大32体）を出現できる。各ボスは個別のボスバー・ダメージ集計・報酬分配を持つ
 
 調整方法と検証手順は [BOSS_DIFFICULTY.md](BOSS_DIFFICULTY.md) を参照してください。
 
@@ -122,7 +123,8 @@ forge/build/libs/guildquests_forge-1.20.1_26.12.1.jar
 | `/guild fx` | Guild FX を開く（F8 は任意で有効化） |
 | `/guildadmin` | 借入・滞納などの管理チェスト UI を開く（OP Lv2） |
 | `/guildadmin reload` | JSON 設定を再読込する（OP Lv2） |
-| `/guildadmin boss` | 緊急ボスを即時に出現させる（OP Lv2） |
+| `/guildadmin boss [count]` | 緊急ボスを即時に出現させる（count省略時は1体、最大32体、OP Lv2） |
+| `/guildadmin boss stop` | 読み込み済み・追跡中の緊急ボスをすべて報酬なしで終了する（OP Lv2） |
 | `/guildadmin coins set\|add <player> <amount>` | コインを設定・加算する（OP Lv2） |
 | `/guildadmin loan add\|set <player> <amount>` | 借入を加算・指定額に設定する（OP Lv2） |
 | `/guildadmin loan clear <player>` | 借入を帳消しにする（OP Lv2） |

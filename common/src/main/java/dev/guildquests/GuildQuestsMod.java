@@ -1,5 +1,6 @@
 package dev.guildquests;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import dev.guildquests.block.ModBlocks;
 import dev.guildquests.config.ConfigManager;
@@ -12,6 +13,7 @@ import dev.guildquests.platform.ContentRegistrar;
 import dev.guildquests.platform.Platform;
 import dev.guildquests.service.BossEvent;
 import dev.guildquests.service.GuildService;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
@@ -153,17 +155,13 @@ public final class GuildQuestsMod {
                     .then(Commands.literal("stop").executes(context -> {
                         boolean stopped = BossEvent.stopNow(context.getSource().getServer());
                         context.getSource().sendSuccess(() -> Component.literal(stopped
-                                ? "緊急ボスを報酬なしで終了しました。" : "終了できる緊急ボスはいません。"), true);
+                                ? "読み込み済みの緊急ボスをすべて報酬なしで終了しました。" : "終了できる緊急ボスはいません。"), true);
                         return stopped ? 1 : 0;
                     }))
-                    .executes(context -> {
-                        boolean spawned = BossEvent.spawnNow(context.getSource().getServer());
-                        boolean result = spawned;
-                        context.getSource().sendSuccess(() -> Component.literal(result
-                                ? "Emergency boss spawned (chance roll skipped)."
-                                : "Boss spawn failed: no players online or a boss is already alive."), false);
-                        return spawned ? 1 : 0;
-                    }));
+                    .executes(context -> spawnBosses(context.getSource(), 1))
+                    .then(Commands.argument("count", IntegerArgumentType.integer(1, BossEvent.MAX_ACTIVE))
+                            .executes(context -> spawnBosses(context.getSource(),
+                                    IntegerArgumentType.getInteger(context, "count")))));
 
             var coins = Commands.literal("coins");
             coins.then(Commands.literal("set")
@@ -267,5 +265,24 @@ public final class GuildQuestsMod {
         });
 
         LOGGER.info("Guild Quests & Economy initialized (multi-loader 1.20.1)");
+    }
+
+    /** `/guildadmin boss [count]`: spawns bosses immediately, skipping the chance roll. */
+    private static int spawnBosses(CommandSourceStack source, int count) {
+        int spawned = BossEvent.spawn(source.getServer(), count);
+        String message;
+        if (spawned == 0) {
+            message = "Boss spawn failed: no eligible overworld players or the active boss limit ("
+                    + BossEvent.MAX_ACTIVE + ") was reached.";
+        } else if (spawned < count) {
+            message = "Spawned " + spawned + " / " + count + " emergency bosses (active limit "
+                    + BossEvent.MAX_ACTIVE + ").";
+        } else if (spawned == 1) {
+            message = "Emergency boss spawned (chance roll skipped).";
+        } else {
+            message = "Spawned " + spawned + " emergency bosses (chance roll skipped).";
+        }
+        source.sendSuccess(() -> Component.literal(message), false);
+        return spawned;
     }
 }

@@ -127,7 +127,7 @@ public final class AdminScreenHandler extends AbstractContainerMenu {
         action(10, Items.WRITABLE_BOOK, "設定を再読込", () -> { ConfigManager.loadAll(); notice = "設定を再読込しました。"; }, "reload と同じ操作");
         action(12, Items.WITHER_SKELETON_SKULL, "緊急ボスを出現", () -> {
             boolean ok = BossEvent.spawnNow(owner.getServer());
-            notice = ok ? "緊急ボスを出現させました。" : "出現できませんでした（既に生存 or プレイヤー不在）。";
+            notice = ok ? "緊急ボスを出現させました。" : "出現できませんでした（プレイヤー不在 or 上限）。";
         }, "boss と同じ操作", "確率ロールをスキップ");
         boolean mc = FxSettings.get().marginCallEnabled;
         action(14, mc ? Items.REDSTONE_BLOCK : Items.GRAY_CONCRETE, "FX追証: " + (mc ? "あり" : "なし（ゼロカット）"),

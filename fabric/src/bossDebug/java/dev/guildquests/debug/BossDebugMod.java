@@ -30,7 +30,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /** Opt-in headless tests using actual Minecraft damage, events, mixins and player respawn. */
@@ -199,6 +198,7 @@ public final class BossDebugMod implements ModInitializer {
 
         new BossProjectileChecks(world, rookie, this::boss, this::check).run();
         new BossExploitChecks(world, rookie, this::boss, this::check).run();
+        new BossEventChecks(world, rookie, veteran, this::boss, this::check).run();
 
         ConfigManager.config().bossRespawnProtectionSeconds = 1;
         Arrow beforeDeath = new Arrow(world, rookie);
@@ -209,8 +209,8 @@ public final class BossDebugMod implements ModInitializer {
         respawned = server.getPlayerList().respawn(rookie, false);
         BossCombat.tick(server);
         check(BossCombat.isProtected(respawned), "protection starts on actual respawn");
-        BossCombat.beginEncounter();
-        check(BossCombat.isProtected(respawned), "new boss encounter preserves active respawn protection");
+        check(BossEvent.spawnNow(server) && BossCombat.isProtected(respawned),
+                "actual additional boss spawn preserves active respawn protection");
         check(!BossCombat.allowDamage(respawned, world.damageSources().mobAttack(boss)), "respawn protection blocks boss damage");
         check(!BossCombat.allowEffect(respawned, new MobEffectInstance(MobEffects.POISON, 100, 1), boss), "respawn protection blocks boss debuffs");
         boss.setTarget(respawned);
@@ -261,7 +261,7 @@ public final class BossDebugMod implements ModInitializer {
         var leftovers = new ArrayList<net.minecraft.world.entity.Entity>();
         world.getAllEntities().forEach(entity -> { if (BossCombat.isBoss(entity)) leftovers.add(entity); });
         leftovers.forEach(net.minecraft.world.entity.Entity::discard);
-        var clear = BossEvent.class.getDeclaredMethod("clearBoss"); clear.setAccessible(true); clear.invoke(null);
+        var clear = BossEvent.class.getDeclaredMethod("clearBosses"); clear.setAccessible(true); clear.invoke(null);
         BossCombat.reset();
     }
 
@@ -279,9 +279,8 @@ public final class BossDebugMod implements ModInitializer {
         boss.hurt(world.damageSources().playerAttack(player), amount);
     }
 
-    @SuppressWarnings("unchecked") private double credit(ServerPlayer player) throws Exception {
-        var field = BossEvent.class.getDeclaredField("damage"); field.setAccessible(true);
-        return ((Map<UUID, Double>) field.get(null)).getOrDefault(player.getUUID(), 0d);
+    private double credit(ServerPlayer player) throws Exception {
+        return BossEventChecks.totalCredit(player);
     }
 
     private void check(boolean success, String name) {
