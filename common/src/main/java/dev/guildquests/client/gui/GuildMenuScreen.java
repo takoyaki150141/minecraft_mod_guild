@@ -54,6 +54,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         super(title);
         this.menu = menu;
         scroll = new int[menu.kind.sections.size()];
+        keypad.setApplier(value -> GuildGuiActions.amountSender.accept(menu.containerId, value));
     }
 
     public static GuildMenuScreen create(GuildClientMenu menu, Inventory inventory, Component title) {
@@ -298,10 +299,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
 
     private void applyKeypad() {
         if (amount == null) { keypad.close(); return; }
-        Long value = keypad.value();
-        if (value == null) return;
-        GuildGuiActions.amountSender.accept(menu.containerId, value);
-        keypad.close();
+        keypad.applyOrError();
     }
     private void turnPage(int delta) {
         if (layout == null) return;
@@ -492,6 +490,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         if (keypad.isOpen()) {
             if (key == GLFW.GLFW_KEY_ESCAPE) { closeKeypad(); return true; }
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) { applyKeypad(); return true; }
+            if (key == GLFW.GLFW_KEY_TAB) { keypad.refocus(); return true; }
             keypad.keyPressed(key, scanCode, modifiers);
             return true;
         }

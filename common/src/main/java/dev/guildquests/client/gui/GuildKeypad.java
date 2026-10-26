@@ -3,9 +3,11 @@ package dev.guildquests.client.gui;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import dev.guildquests.util.Numbers;
 import org.lwjgl.glfw.GLFW;
+import java.util.function.LongConsumer;
 
 final class GuildKeypad {
     enum Result { NONE, HANDLED, APPLY, CLOSE }
@@ -14,12 +16,15 @@ final class GuildKeypad {
     private static final int COLUMNS = 3;
     private static final int MAX_DIGITS = 19;
     private static final int CLOSE_WIDTH = 52;
+    private static final int ERROR_HEIGHT = 12;
 
     private boolean open;
     private String draft = "0";
     private long max = Long.MAX_VALUE;
     private EditBox input;
     private long wallet = Long.MAX_VALUE;
+    private String error;
+    private LongConsumer applier;
 
     record Bounds(int left, int top, int right, int bottom) {
         int width() { return right - left; }
@@ -42,14 +47,19 @@ final class GuildKeypad {
         input.setMaxLength(MAX_DIGITS);
         input.setFilter(this::validDraft);
         input.setValue(draft);
-        input.setResponder(value -> draft = value);
+        input.setResponder(value -> {
+            boolean changed = !value.equals(draft);
+            draft = value;
+            if (changed) setError(null);
+        });
         input.setCanLoseFocus(false);
     }
     void open() {
         open = true;
+        if (input == null) return;
         input.setFocused(true);
-        input.moveCursorToEnd();
-        input.setHighlightPos(0);
+        selectAll();
+        setError(null);
     }
     void close() {
         open = false;
@@ -88,6 +98,59 @@ final class GuildKeypad {
         }
     }
 
+    void setApplier(LongConsumer applier) { this.applier = applier; }
+
+    /**
+     * Applies the current draft when it is valid. Otherwise keeps the keypad open,
+     * records the reason on the field and returns false.
+     */
+    boolean applyOrError() {
+        String reason = reasonFor(draft);
+        if (reason != null) {
+            setError(reason);
+            return false;
+        }
+        Long parsed = value();
+        if (parsed == null) {
+            setError("金額を入力してください");
+            return false;
+        }
+        setError(null);
+        if (applier != null) applier.accept(parsed);
+        close();
+        return true;
+    }
+
+    private String reasonFor(String text) {
+        if (text == null || text.isEmpty()) return "金額を入力してください";
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c < '0' || c > '9') return "数字のみ入力できます";
+        }
+        try {
+            if (Long.parseLong(text) > max) return "上限は " + Numbers.format(max) + " です";
+        } catch (NumberFormatException ex) {
+            return "上限は " + Numbers.format(max) + " です";
+        }
+        return null;
+    }
+
+    private void setError(String reason) {
+        error = reason;
+        if (input != null) {
+            input.setTooltip(reason == null ? null : Tooltip.create(Component.literal(reason)));
+        }
+    }
+
+    private void selectAll() {
+        input.moveCursorToEnd();
+        input.setHighlightPos(0);
+    }
+
+    void refocus() {
+        if (input != null && open) input.setFocused(true);
+    }
+
     private boolean validDraft(String text) {
         if (text.isEmpty()) return true;
         if (text.length() > MAX_DIGITS || !text.chars().allMatch(c -> c >= '0' && c <= '9')) return false;
@@ -99,8 +162,11 @@ final class GuildKeypad {
     }
 
     private void setDraft(String text) {
-        draft = text;
-        if (input != null) input.setValue(text);
+        if (input == null) {
+            draft = text;
+            return;
+        }
+        input.setValue(text);
     }
 
     boolean keyPressed(int key, int scanCode, int modifiers) {
@@ -121,12 +187,14 @@ final class GuildKeypad {
         setDraft("0");
         input.moveCursorToEnd();
         input.setHighlightPos(0);
+        setError(null);
     }
 
     /** "全額": fill with the spendable wallet, never above the menu's max. */
     void fillWallet() {
         long target = Math.max(0, Math.min(max, wallet));
         setDraft(Long.toString(target));
+        setError(null);
     }
 
     private void clampDraft() {
@@ -149,6 +217,7 @@ final class GuildKeypad {
 
         positionInput(m);
         input.render(graphics, mouseX, mouseY, 0);
+        renderError(graphics, font, m);
 
         for (int i = 0; i < KEYS.length; i++) {
             Rect key = keyRect(m, i);
@@ -159,7 +228,10 @@ final class GuildKeypad {
         Rect wallet = walletRect(m);
         key(graphics, font, wallet, "全額", wallet.contains(mouseX, mouseY), 0xFF22303C, 0xFF33485A);
         Rect confirm = confirmRect(m);
-        key(graphics, font, confirm, "確定", confirm.contains(mouseX, mouseY), 0xFF2C4A30, 0xFF3D6B43);
+        boolean valid = value() != null;
+        key(graphics, font, confirm, "確定", valid && confirm.contains(mouseX, mouseY),
+                valid ? 0xFF2C4A30 : 0xFF3A3A3A, valid ? 0xFF3D6B43 : 0xFF3A3A3A,
+                valid ? 0xFFFFFFFF : 0xFF9A9A9A);
         Rect close = closeRect(m);
         key(graphics, font, close, "閉じる", close.contains(mouseX, mouseY), 0xFF303030, 0xFF4A4A4A);
     }
@@ -171,7 +243,11 @@ final class GuildKeypad {
         positionInput(m);
         if (input.mouseClicked(mouseX, mouseY, button)) return Result.HANDLED;
         if (closeRect(m).contains(mouseX, mouseY)) return Result.CLOSE;
-        if (confirmRect(m).contains(mouseX, mouseY)) return value() != null ? Result.APPLY : Result.HANDLED;
+        if (confirmRect(m).contains(mouseX, mouseY)) {
+            if (value() != null) return Result.APPLY;
+            setError(reasonFor(draft));
+            return Result.HANDLED;
+        }
         if (clearRect(m).contains(mouseX, mouseY)) { clear(); return Result.HANDLED; }
         if (walletRect(m).contains(mouseX, mouseY)) { fillWallet(); return Result.HANDLED; }
         for (int i = 0; i < KEYS.length; i++) {
@@ -201,7 +277,7 @@ final class GuildKeypad {
         int headerH = 20;
         int panelW = Math.min(168, Math.max(96, area.width() - 8));
         int available = Math.max(96, Math.min(area.height() - 8, screenHeight - 8));
-        int fixed = pad * 2 + headerH + gap * 6 + 40;
+        int fixed = pad * 2 + headerH + ERROR_HEIGHT + gap * 6 + 40;
         int keyH = Math.max(12, Math.min(22, (available - fixed) / 4));
         int keyW = Math.max(20, (panelW - pad * 2 - gap * 2) / 3);
         int panelH = fixed + 4 * keyH;
@@ -211,7 +287,7 @@ final class GuildKeypad {
         panelY = Math.max(2, Math.min(screenHeight - panelH - 2, panelY));
         int headerY = panelY + pad;
         int keyX = panelX + pad;
-        int keyY = headerY + headerH + gap;
+        int keyY = headerY + headerH + ERROR_HEIGHT + gap;
         int clearY = keyY + 4 * keyH + 3 * gap + gap;
         int bottomY = clearY + 20 + gap;
         return new Metrics(panelX, panelY, panelW, panelH, keyX, keyY, keyW, keyH,
@@ -245,15 +321,36 @@ final class GuildKeypad {
         return new Rect(m.panelX + m.panelW - m.pad - CLOSE_WIDTH, m.bottomY, CLOSE_WIDTH, 20);
     }
 
+    private void renderError(GuiGraphics graphics, Font font, Metrics m) {
+        if (error == null) return;
+        int x = m.panelX + m.pad;
+        int y = m.headerY + m.headerH + 1;
+        graphics.drawString(font, clip(font, error, m.panelW - m.pad * 2), x, y, 0xFFFF5555, false);
+        int markerX = m.panelX + m.panelW - m.pad - 9;
+        int markerY = m.headerY + 5;
+        graphics.fill(markerX, markerY, markerX + 9, markerY + 10, 0xFF5A1616);
+        graphics.drawCenteredString(font, "!", markerX + 4, markerY + 1, 0xFFFF6B6B);
+    }
+
+    private static String clip(Font font, String value, int width) {
+        if (font.width(value) <= width) return value;
+        return font.plainSubstrByWidth(value, Math.max(0, width - font.width("…"))) + "…";
+    }
+
     private void key(GuiGraphics graphics, Font font, Rect rect, String label, boolean hovered,
                      int base, int highlight) {
+        key(graphics, font, rect, label, hovered, base, highlight, 0xFFFFFFFF);
+    }
+
+    private void key(GuiGraphics graphics, Font font, Rect rect, String label, boolean hovered,
+                     int base, int highlight, int textColor) {
         graphics.fill(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h, hovered ? highlight : base);
         graphics.fill(rect.x, rect.y, rect.x + rect.w, rect.y + 1, 0x40FFFFFF);
         String text = label;
         int limit = rect.w - 4;
         if (font.width(text) > limit)
             text = font.plainSubstrByWidth(text, Math.max(0, limit - font.width("…"))) + "…";
-        graphics.drawCenteredString(font, text, rect.x + rect.w / 2, rect.y + (rect.h - 8) / 2, 0xFFFFFFFF);
+        graphics.drawCenteredString(font, text, rect.x + rect.w / 2, rect.y + (rect.h - 8) / 2, textColor);
     }
 
     private void border(GuiGraphics graphics, int x, int y, int w, int h) {
