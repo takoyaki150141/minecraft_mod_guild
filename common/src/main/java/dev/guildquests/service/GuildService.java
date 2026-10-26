@@ -12,6 +12,7 @@ import dev.guildquests.model.ExploreMode;
 import dev.guildquests.model.QuestDefinition;
 import dev.guildquests.model.QuestType;
 import dev.guildquests.item.ModItems;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.Container;
@@ -90,7 +91,7 @@ public final class GuildService {
         }
         if (quest.type == QuestType.COLLECT
                 && data.collectOnCooldown(boardDay(player.getServer()), quest.id, quest.cooldownDays)) {
-            message(player, "この収集クエストは現在クールダウン中です（" + quest.cooldownDays + " 日に1回まで）。", ChatFormatting.YELLOW);
+            message(player, "この収集クエストは現在クールダウン中です（" + Numbers.format(quest.cooldownDays) + " 日に1回まで）。", ChatFormatting.YELLOW);
             return false;
         }
 
@@ -116,7 +117,7 @@ public final class GuildService {
             String dim = dimensionLabel(quest.dimension);
             detail.append("（目的地: ").append(dim.isEmpty() ? "" : dim + " ")
                     .append(formatCoords(active))
-                    .append(" 半径 ").append((int) quest.radius).append("）");
+                    .append(" 半径 ").append(Numbers.format((int) quest.radius)).append("）");
         }
         message(player, "クエスト「" + quest.title + "」を受注しました" + detail + "。", ChatFormatting.GREEN);
         return true;
@@ -297,11 +298,11 @@ public final class GuildService {
         state.setDirty();
 
         if (tribute > 0) {
-            message(player, "クエスト「" + quest.title + "」達成！報酬 " + tribute
-                    + " コインは債務返済に充当" + (reward > 0 ? "、残り " + reward + " コインは受け取り" : "")
-                    + "（残債務 " + data.debt + "）", ChatFormatting.GOLD);
+            message(player, "クエスト「" + quest.title + "」達成！報酬 " + Numbers.format(tribute)
+                    + " コインは債務返済に充当" + (reward > 0 ? "、残り " + Numbers.format(reward) + " コインは受け取り" : "")
+                    + "（残債務 " + Numbers.format(data.debt) + "）", ChatFormatting.GOLD);
         } else {
-            message(player, "クエスト「" + quest.title + "」達成！ +" + reward + " コイン", ChatFormatting.GOLD);
+            message(player, "クエスト「" + quest.title + "」達成！ +" + Numbers.format(reward) + " コイン", ChatFormatting.GOLD);
         }
         return true;
     }
@@ -395,7 +396,7 @@ public final class GuildService {
             return false;
         }
         if (from.coins < amount) {
-            message(sender, "残高が不足しています。残高: " + from.coins + " / 必要: " + amount, ChatFormatting.RED);
+            message(sender, "残高が不足しています。残高: " + Numbers.format(from.coins) + " / 必要: " + Numbers.format(amount), ChatFormatting.RED);
             return false;
         }
         from.coins -= amount;
@@ -404,9 +405,9 @@ public final class GuildService {
 
         String senderName = sender.getName().getString();
         String receiverName = receiver.getName().getString();
-        message(sender, receiverName + " へ " + amount + " コインを送金しました（手数料無料）。残高: " + from.coins, ChatFormatting.GREEN);
+        message(sender, receiverName + " へ " + Numbers.format(amount) + " コインを送金しました（手数料無料）。残高: " + Numbers.format(from.coins), ChatFormatting.GREEN);
         if (!receiver.isRemoved()) {
-            message(receiver, senderName + " から " + amount + " コインを受け取りました。残高: " + to.coins, ChatFormatting.AQUA);
+            message(receiver, senderName + " から " + Numbers.format(amount) + " コインを受け取りました。残高: " + Numbers.format(to.coins), ChatFormatting.AQUA);
         }
         return true;
     }
@@ -448,8 +449,8 @@ public final class GuildService {
         }
         long limit = loanLimit(data);
         if (data.loan > limit || amount > limit - data.loan) {
-            message(player, "借入上限を超えます。上限: " + limit + " / 現在の債務: " + data.loan
-                    + " / 借入可能: " + Math.max(0, limit - data.loan), ChatFormatting.RED);
+            message(player, "借入上限を超えます。上限: " + Numbers.format(limit) + " / 現在の債務: " + Numbers.format(data.loan)
+                    + " / 借入可能: " + Numbers.format(Math.max(0, limit - data.loan)), ChatFormatting.RED);
             return false;
         }
         data.loan = safeAdd(data.loan, amount);
@@ -458,7 +459,7 @@ public final class GuildService {
             data.nextLoanInterestAt = System.currentTimeMillis() + loanIntervalMillis();
         }
         state.setDirty();
-        message(player, amount + " コインを借り入れました。債務: " + data.loan + " / 残高: " + data.coins, ChatFormatting.GREEN);
+        message(player, Numbers.format(amount) + " コインを借り入れました。債務: " + Numbers.format(data.loan) + " / 残高: " + Numbers.format(data.coins), ChatFormatting.GREEN);
         return true;
     }
 
@@ -466,10 +467,6 @@ public final class GuildService {
     public static boolean repayLoan(ServerPlayer player, long amount) {
         GuildPersistentState state = GuildPersistentState.get(player.getServer());
         PlayerGuildData data = state.get(player.getUUID());
-        if (ConfigManager.config().miningDebtRepaymentOnly) {
-            message(player, "返済は採掘のみです。設定したブロックを掘って返済してください。", ChatFormatting.YELLOW);
-            return false;
-        }
         if (data.loan <= 0) {
             message(player, "返済する債務がありません。", ChatFormatting.YELLOW);
             return false;
@@ -477,7 +474,7 @@ public final class GuildService {
         long want = amount <= 0 ? data.loan : amount;
         long pay = Math.min(want, Math.min(data.loan, data.coins));
         if (pay <= 0) {
-            message(player, "残高が不足しています。残高: " + data.coins + " / 債務: " + data.loan, ChatFormatting.RED);
+            message(player, "残高が不足しています。残高: " + Numbers.format(data.coins) + " / 債務: " + Numbers.format(data.loan), ChatFormatting.RED);
             return false;
         }
         data.coins -= pay;
@@ -485,9 +482,15 @@ public final class GuildService {
         if (data.loan <= 0) {
             data.loan = 0;
             data.nextLoanInterestAt = 0;
+            if (data.debt <= 0) {
+                // Legacy loan-only delinquency ends once every obligation is gone.
+                data.debt = 0;
+                data.delinquent = data.adminDelinquent;
+                data.nextRiboDueAt = 0;
+            }
         }
         state.setDirty();
-        message(player, pay + " コインを返済しました。残債務: " + data.loan + " / 残高: " + data.coins, ChatFormatting.GREEN);
+        message(player, Numbers.format(pay) + " コインを返済しました。残債務: " + Numbers.format(data.loan) + " / 残高: " + Numbers.format(data.coins), ChatFormatting.GREEN);
         return true;
     }
 
@@ -543,7 +546,7 @@ public final class GuildService {
 
         long add = Math.round(value * 1000.0);
         if (add <= 0) return;
-        data.loanCreditMillis += add;
+        data.loanCreditMillis = safeAdd(data.loanCreditMillis, add);
 
         long available = data.loanCreditMillis / 1000;
         if (available > 0) {
@@ -609,6 +612,7 @@ public final class GuildService {
 
             long due = Math.min(config.riboInstallment, data.debt);
             boolean newlyDelinquent = false;
+            long seized = 0;
             if (config.miningDebtRepaymentOnly) {
                 if (!data.delinquent) {
                     data.delinquent = true;
@@ -617,9 +621,18 @@ public final class GuildService {
             } else if (data.coins >= due) {
                 data.coins -= due;
                 data.debt -= due;
-            } else if (!data.delinquent) {
-                data.delinquent = true;
-                newlyDelinquent = true;
+            } else {
+                // Delinquent: force-execute against the balance, then the rest must be mined.
+                if (!data.delinquent) {
+                    data.delinquent = true;
+                    newlyDelinquent = true;
+                }
+                long take = Math.min(data.coins, data.debt);
+                if (take > 0) {
+                    data.coins -= take;
+                    data.debt -= take;
+                    seized = take;
+                }
             }
 
             boolean unlocked = false;
@@ -632,13 +645,14 @@ public final class GuildService {
             state.setDirty();
 
             ServerPlayer online = server.getPlayerList().getPlayer(entry.getKey());
-            if (online != null && newlyDelinquent) {
+            if (online != null && (newlyDelinquent || seized > 0) && data.debt > 0) {
                 if (config.miningDebtRepaymentOnly) {
-                    message(online, "返済期限を過ぎました（債務 " + data.debt + "）。"
+                    message(online, "返済期限を過ぎました（債務 " + Numbers.format(data.debt) + "）。"
                             + "返済は採掘のみです。設定したブロックを掘って返済してください。", ChatFormatting.RED);
                 } else {
-                    message(online, "債務の定期返済が残高不足で失敗しました（債務 " + data.debt + "）。"
-                            + "完済するまでギルド機能がロックされています。クエスト報酬は自動で返済に充てられます。", ChatFormatting.RED);
+                    message(online, "残高不足で滞納しました（債務 " + Numbers.format(data.debt) + "）。"
+                            + (seized > 0 ? "強制執行で " + Numbers.format(seized) + " コインを徴収しました。" : "")
+                            + "残りは採掘で返済してください。", ChatFormatting.RED);
                 }
             }
             if (online != null && unlocked) {
@@ -649,10 +663,10 @@ public final class GuildService {
 
     public static void riboLockMessage(ServerPlayer player, PlayerGuildData data) {
         if (data.adminDelinquent) {
-            message(player, "管理者により滞納ロック中です。解除は管理者へ依頼してください。借入 " + data.loan + " / FX・リボ債務 " + data.debt, ChatFormatting.RED);
+            message(player, "管理者により滞納ロック中です。解除は管理者へ依頼してください。借入 " + Numbers.format(data.loan) + " / FX・リボ債務 " + Numbers.format(data.debt), ChatFormatting.RED);
             return;
         }
-        message(player, "債務の滞納中です。債務 " + data.debt
+        message(player, "債務の滞納中です。債務 " + Numbers.format(data.debt)
                 + " を完済するまでギルド機能がロックされています（"
                 + (ConfigManager.config().miningDebtRepaymentOnly ? "採掘で返済できます" : "クエスト報酬で返済できます") + "）。", ChatFormatting.RED);
     }
@@ -678,7 +692,7 @@ public final class GuildService {
             return false;
         }
         if (data.coins < amount) {
-            message(player, "コイン残高が不足しています。残高: " + data.coins + " / 必要: " + amount, ChatFormatting.RED);
+            message(player, "コイン残高が不足しています。残高: " + Numbers.format(data.coins) + " / 必要: " + Numbers.format(amount), ChatFormatting.RED);
             return false;
         }
         long fee = bankFee(amount, feeWaived);
@@ -695,8 +709,8 @@ public final class GuildService {
         data.coins -= amount;
         giveCoins(player.getInventory(), coinStack);
         state.setDirty();
-        message(player, receive + " コインを引き出しました"
-                + (fee > 0 ? "（手数料 " + fee + "）" : "") + "。残高: " + data.coins, ChatFormatting.GREEN);
+        message(player, Numbers.format(receive) + " コインを引き出しました"
+                + (fee > 0 ? "（手数料 " + Numbers.format(fee) + "）" : "") + "。残高: " + Numbers.format(data.coins), ChatFormatting.GREEN);
         return true;
     }
 
@@ -722,8 +736,8 @@ public final class GuildService {
         removeItem(player.getInventory(), ModItems.COIN, (int) take);
         data.coins = safeAdd(data.coins, credit);
         state.setDirty();
-        message(player, take + " コインを預け入れました"
-                + (fee > 0 ? "（手数料 " + fee + "）" : "") + "。残高: " + data.coins, ChatFormatting.GREEN);
+        message(player, Numbers.format(take) + " コインを預け入れました"
+                + (fee > 0 ? "（手数料 " + Numbers.format(fee) + "）" : "") + "。残高: " + Numbers.format(data.coins), ChatFormatting.GREEN);
         return true;
     }
 
@@ -756,9 +770,9 @@ public final class GuildService {
         data.coins = safeAdd(data.coins, held);
         state.setDirty();
         if (target.equals(player.getUUID())) {
-            message(player, held + " コインを預け入れました（手数料なし）。残高: " + data.coins, ChatFormatting.GREEN);
+            message(player, Numbers.format(held) + " コインを預け入れました（手数料なし）。残高: " + Numbers.format(data.coins), ChatFormatting.GREEN);
         } else {
-            message(player, targetName + " の口座に " + held + " コインを預け入れました。", ChatFormatting.GREEN);
+            message(player, targetName + " の口座に " + Numbers.format(held) + " コインを預け入れました。", ChatFormatting.GREEN);
         }
         return true;
     }
@@ -942,9 +956,9 @@ public final class GuildService {
         long hours = (ticks % 24000) / 1000;
         long minutes = (ticks % 1000) * 60 / 1000;
         StringBuilder sb = new StringBuilder();
-        if (days > 0) sb.append(days).append("日");
-        if (hours > 0) sb.append(hours).append("時間");
-        if (days == 0 && minutes > 0) sb.append(minutes).append("分");
+        if (days > 0) sb.append(Numbers.format(days)).append("日");
+        if (hours > 0) sb.append(Numbers.format(hours)).append("時間");
+        if (days == 0 && minutes > 0) sb.append(Numbers.format(minutes)).append("分");
         return sb.length() == 0 ? "1分未満" : sb.toString();
     }
 

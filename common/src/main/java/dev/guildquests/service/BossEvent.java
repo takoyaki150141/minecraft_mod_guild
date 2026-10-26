@@ -3,6 +3,7 @@ package dev.guildquests.service;
 import dev.guildquests.config.ConfigManager;
 import dev.guildquests.config.ModConfig;
 import dev.guildquests.platform.Platform;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -296,7 +297,7 @@ public final class BossEvent {
         }
         long reward = Math.max(0, Math.round(config.bossEventReward * tier.rewardMultiplier()));
         GuildService.broadcast(server, "緊急ボス【" + tier.label() + " " + mobName + "】が出現！座標: ("
-                + x + ", " + y + ", " + z + ")  与えたダメージの割合で報酬 " + reward
+                + x + ", " + y + ", " + z + ")  与えたダメージの割合で報酬 " + Numbers.format(reward)
                 + " コインを分配します。", ChatFormatting.RED);
         return true;
     }
@@ -368,8 +369,8 @@ public final class BossEvent {
             LivingEntity boss = instance.entity;
             String target = boss instanceof Mob mob && mob.getTarget() != null
                     ? mob.getTarget().getName().getString() : "none";
-            lines.add(instance.shortName + " " + Math.round(boss.getHealth()) + "/"
-                    + Math.round(boss.getMaxHealth()) + " target=" + target);
+            lines.add(instance.shortName + " " + Numbers.format(Math.round(boss.getHealth())) + "/"
+                    + Numbers.format(Math.round(boss.getMaxHealth())) + " target=" + target);
         }
         return lines;
     }
@@ -614,18 +615,18 @@ public final class BossEvent {
                 GuildService.creditCoins(server, uuid, totalPaid);
                 ServerPlayer online = server.getPlayerList().getPlayer(uuid);
                 if (online != null) {
-                    GuildService.message(online, "緊急ボス討伐報酬: +" + shares[i]
-                            + " コイン + 参加ボーナス +" + bonus
-                            + "（計 " + totalPaid + " / 与ダメージ: "
-                            + (int) Math.round(dealt) + "）", ChatFormatting.GREEN);
+                    GuildService.message(online, "緊急ボス討伐報酬: +" + Numbers.format(shares[i])
+                            + " コイン + 参加ボーナス +" + Numbers.format(bonus)
+                            + "（計 " + Numbers.format(totalPaid) + " / 与ダメージ: "
+                            + Numbers.format((int) Math.round(dealt)) + "）", ChatFormatting.GREEN);
                 }
             }
             if (detail.length() > 0) detail.append(" / ");
             detail.append(instance.damageNames.getOrDefault(uuid, uuid.toString().substring(0, 8)))
-                    .append(" ").append(shares[i] + bonus).append("コイン");
+                    .append(" ").append(Numbers.format(shares[i] + bonus)).append("コイン");
         }
-        GuildService.broadcast(server, "緊急ボス【" + name + "】を討伐！報酬 " + reward
-                + " コイン + 参加ボーナス各 +" + bonus + " を分配: " + detail, ChatFormatting.GOLD);
+        GuildService.broadcast(server, "緊急ボス【" + name + "】を討伐！報酬 " + Numbers.format(reward)
+                + " コイン + 参加ボーナス各 +" + Numbers.format(bonus) + " を分配: " + detail, ChatFormatting.GOLD);
     }
 
     private static BossInstance adopt(LivingEntity entity) {

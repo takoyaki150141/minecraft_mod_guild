@@ -16,6 +16,7 @@ import dev.guildquests.service.BossEvent;
 import dev.guildquests.service.BossProtection;
 import dev.guildquests.service.BossTier;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.Commands;
@@ -128,10 +129,10 @@ public final class GuildQuestsMod {
                                 PlayerGuildData data = GuildService.data(player);
                                 player.sendSystemMessage(Component.literal("[Guild] ").withStyle(ChatFormatting.GOLD)
                                         .append(Component.literal("Rank " + GuildService.rank(data)
-                                                + " | Coins " + data.coins
-                                                + " | Total " + data.completedTotal
+                                                + " | Coins " + Numbers.format(data.coins)
+                                                + " | Total " + Numbers.format(data.completedTotal)
                                                 + " | Pay " + GuildService.paymentModeLabel(GuildService.paymentMode(data))
-                                                + (data.debt > 0 ? " | Debt " + data.debt + (data.delinquent ? "（延滞中・ロック）" : "") : "")
+                                                + (data.debt > 0 ? " | Debt " + Numbers.format(data.debt) + (data.delinquent ? "（延滞中・ロック）" : "") : "")
                                         ).withStyle(ChatFormatting.YELLOW)));
                                 return 1;
                             }))
@@ -163,7 +164,7 @@ public final class GuildQuestsMod {
                                         int price = tier.protectionPrice(ConfigManager.config().bossProtectionPrices);
                                         PlayerGuildData data = GuildService.data(player);
                                         if (data.coins < price) {
-                                            GuildService.message(player, "コインが足りません（必要 " + price + " GC）", ChatFormatting.RED);
+                                            GuildService.message(player, "コインが足りません（必要 " + Numbers.gc(price) + "）", ChatFormatting.RED);
                                             return 0;
                                         }
                                         if (!GuildService.payCoins(player, price)) {
@@ -171,7 +172,7 @@ public final class GuildQuestsMod {
                                             return 0;
                                         }
                                         BossProtection.grant(player);
-                                        GuildService.message(player, "【" + tier.label() + "】ボス保護を " + price + " GC で購入しました。",
+                                        GuildService.message(player, "【" + tier.label() + "】ボス保護を " + Numbers.gc(price) + " で購入しました。",
                                                 ChatFormatting.GREEN);
                                         return 1;
                                     }))));
@@ -192,7 +193,7 @@ public final class GuildQuestsMod {
                         List<String> lines = BossEvent.describeBosses();
                         context.getSource().sendSuccess(() -> Component.literal(lines.isEmpty()
                                 ? "緊急ボスはいません。"
-                                : "緊急ボス " + lines.size() + "体: " + String.join(" / ", lines)), false);
+                                : "緊急ボス " + Numbers.format(lines.size()) + "体: " + String.join(" / ", lines)), false);
                         return lines.size();
                     }))
                     .executes(context -> spawnBosses(context.getSource(), 1, null))
@@ -219,7 +220,7 @@ public final class GuildQuestsMod {
                                         PlayerGuildData data = state.get(target.getUUID());
                                         data.coins = amount;
                                         state.setDirty();
-                                        context.getSource().sendSuccess(() -> Component.literal("Set " + target.getName().getString() + " coins to " + amount), true);
+                                        context.getSource().sendSuccess(() -> Component.literal("Set " + target.getName().getString() + " coins to " + Numbers.format(amount)), true);
                                         return 1;
                                     }))));
             coins.then(Commands.literal("add")
@@ -232,7 +233,7 @@ public final class GuildQuestsMod {
                                         PlayerGuildData data = state.get(target.getUUID());
                                         data.coins = data.coins > Long.MAX_VALUE - amount ? Long.MAX_VALUE : data.coins + amount;
                                         state.setDirty();
-                                        context.getSource().sendSuccess(() -> Component.literal("Added " + amount + " coins to " + target.getName().getString()), true);
+                                        context.getSource().sendSuccess(() -> Component.literal("Added " + Numbers.format(amount) + " coins to " + target.getName().getString()), true);
                                         return 1;
                                     }))));
             guildAdmin.then(coins);
@@ -250,8 +251,8 @@ public final class GuildQuestsMod {
                                         dev.guildquests.service.AdminLoanPolicy.add(data, amount, System.currentTimeMillis() + ConfigManager.config().consumerLoanIntervalMinutes * 60_000L);
                                         state.setDirty();
                                         context.getSource().sendSuccess(() -> Component.literal(
-                                                "Gave " + target.getName().getString() + " a loan of " + amount
-                                                        + "（現在の債務: " + data.loan + "）"), true);
+                                                "Gave " + target.getName().getString() + " a loan of " + Numbers.format(amount)
+                                                        + "（現在の債務: " + Numbers.format(data.loan) + "）"), true);
                                         return 1;
                                     }))));
             loan.then(Commands.literal("set")
@@ -265,7 +266,7 @@ public final class GuildQuestsMod {
                                         dev.guildquests.service.AdminLoanPolicy.set(data, amount, System.currentTimeMillis() + ConfigManager.config().consumerLoanIntervalMinutes * 60_000L);
                                         state.setDirty();
                                         context.getSource().sendSuccess(() -> Component.literal(
-                                                "Set " + target.getName().getString() + " loan to " + data.loan), true);
+                                                "Set " + target.getName().getString() + " loan to " + Numbers.format(data.loan)), true);
                                         return 1;
                                     }))));
             loan.then(Commands.literal("clear")
@@ -319,14 +320,14 @@ public final class GuildQuestsMod {
         String message;
         if (spawned == 0) {
             message = "Boss spawn failed: no players online or the active boss limit ("
-                    + BossEvent.MAX_ACTIVE + ") was reached.";
+                    + Numbers.format(BossEvent.MAX_ACTIVE) + ") was reached.";
         } else if (spawned < count) {
-            message = "Spawned " + spawned + " / " + count + " emergency bosses" + tierLabel
-                    + " (active limit " + BossEvent.MAX_ACTIVE + ").";
+            message = "Spawned " + Numbers.format(spawned) + " / " + Numbers.format(count) + " emergency bosses" + tierLabel
+                    + " (active limit " + Numbers.format(BossEvent.MAX_ACTIVE) + ").";
         } else if (spawned == 1) {
             message = "Emergency boss" + tierLabel + " spawned (chance roll skipped).";
         } else {
-            message = "Spawned " + spawned + " emergency bosses" + tierLabel + " (chance roll skipped).";
+            message = "Spawned " + Numbers.format(spawned) + " emergency bosses" + tierLabel + " (chance roll skipped).";
         }
         source.sendSuccess(() -> Component.literal(message), false);
         return spawned;

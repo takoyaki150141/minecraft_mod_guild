@@ -4,6 +4,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import dev.guildquests.util.Numbers;
 import org.lwjgl.glfw.GLFW;
 
 final class GuildKeypad {
@@ -18,6 +19,7 @@ final class GuildKeypad {
     private String draft = "0";
     private long max = Long.MAX_VALUE;
     private EditBox input;
+    private long wallet = Long.MAX_VALUE;
 
     record Bounds(int left, int top, int right, int bottom) {
         int width() { return right - left; }
@@ -55,9 +57,22 @@ final class GuildKeypad {
     }
     String draft() { return draft; }
 
+    /** Grouped form for read-only labels; the EditBox itself keeps plain digits. */
+    String displayDraft() {
+        try {
+            return Numbers.format(Long.parseLong(draft));
+        } catch (NumberFormatException ex) {
+            return draft;
+        }
+    }
+
     void setMax(long max) {
         this.max = Math.max(0, max);
         clampDraft();
+    }
+
+    void setWallet(long wallet) {
+        this.wallet = wallet;
     }
 
     void reset(long value) {
@@ -108,6 +123,12 @@ final class GuildKeypad {
         input.setHighlightPos(0);
     }
 
+    /** "全額": fill with the spendable wallet, never above the menu's max. */
+    void fillWallet() {
+        long target = Math.max(0, Math.min(max, wallet));
+        setDraft(Long.toString(target));
+    }
+
     private void clampDraft() {
         if (draft.isEmpty()) return;
         try {
@@ -135,6 +156,8 @@ final class GuildKeypad {
         }
         Rect clear = clearRect(m);
         key(graphics, font, clear, "クリア", clear.contains(mouseX, mouseY), 0xFF4A2C2C, 0xFF6B3D3D);
+        Rect wallet = walletRect(m);
+        key(graphics, font, wallet, "全額", wallet.contains(mouseX, mouseY), 0xFF22303C, 0xFF33485A);
         Rect confirm = confirmRect(m);
         key(graphics, font, confirm, "確定", confirm.contains(mouseX, mouseY), 0xFF2C4A30, 0xFF3D6B43);
         Rect close = closeRect(m);
@@ -150,6 +173,7 @@ final class GuildKeypad {
         if (closeRect(m).contains(mouseX, mouseY)) return Result.CLOSE;
         if (confirmRect(m).contains(mouseX, mouseY)) return value() != null ? Result.APPLY : Result.HANDLED;
         if (clearRect(m).contains(mouseX, mouseY)) { clear(); return Result.HANDLED; }
+        if (walletRect(m).contains(mouseX, mouseY)) { fillWallet(); return Result.HANDLED; }
         for (int i = 0; i < KEYS.length; i++) {
             if (!keyRect(m, i).contains(mouseX, mouseY)) continue;
             press(i);
@@ -200,7 +224,16 @@ final class GuildKeypad {
     }
 
     private Rect clearRect(Metrics m) {
-        return new Rect(m.panelX + m.pad, m.clearY, m.panelW - m.pad * 2, 20);
+        int content = m.panelW - m.pad * 2;
+        int w = (content - m.gap) / 2;
+        return new Rect(m.panelX + m.pad, m.clearY, w, 20);
+    }
+
+    /** Right half of the clear row: fills the draft with the spendable wallet. */
+    private Rect walletRect(Metrics m) {
+        int content = m.panelW - m.pad * 2;
+        int w = (content - m.gap) / 2;
+        return new Rect(m.panelX + m.pad + w + m.gap, m.clearY, content - w - m.gap, 20);
     }
 
     private Rect confirmRect(Metrics m) {

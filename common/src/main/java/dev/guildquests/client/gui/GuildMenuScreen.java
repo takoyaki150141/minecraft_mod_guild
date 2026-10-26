@@ -3,6 +3,7 @@ package dev.guildquests.client.gui;
 import dev.guildquests.gui.GuildClientMenu;
 import dev.guildquests.gui.GuildItems;
 import dev.guildquests.gui.GuildMenuKind;
+import dev.guildquests.util.Numbers;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -104,6 +105,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         amount = found;
         long value = found.getLong("value");
         keypad.setMax(found.getLong("max"));
+        keypad.setWallet(walletOf(found));
         if (!keypad.isOpen() && value != lastServerAmount) keypad.reset(value);
         lastServerAmount = value;
         return changed;
@@ -117,6 +119,12 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         return null;
     }
 
+    /** Spendable amount from the payload; older payloads omit it, so fall back to max. */
+    private static long walletOf(CompoundTag amount) {
+        return amount.contains("wallet", net.minecraft.nbt.Tag.TAG_LONG)
+                ? amount.getLong("wallet") : amount.getLong("max");
+    }
+
     private void rebuild() {
         keypad.init(font);
         boolean keypadWasOpen = keypad.isOpen();
@@ -124,6 +132,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         if (amount != null) {
             long value = amount.getLong("value");
             keypad.setMax(amount.getLong("max"));
+            keypad.setWallet(walletOf(amount));
             if (!keypadWasOpen && value != lastServerAmount) keypad.reset(value);
             lastServerAmount = value;
         } else {
@@ -147,7 +156,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         }
         if (amount != null) {
             amountButton = button("入力", layout.left() + layout.width() - 72, layout.amountY(), 72, this::openKeypad);
-            amountButton.setTooltip(Tooltip.create(Component.literal("テンキー・キーボード・貼り付けで 0 ～ " + amount.getLong("max") + " の整数を入力")));
+            amountButton.setTooltip(Tooltip.create(Component.literal("テンキー・キーボード・貼り付けで 0 ～ " + Numbers.format(amount.getLong("max")) + " の整数を入力")));
         }
 
         int edgeButton = Math.min(76, layout.width() / 4);
@@ -277,6 +286,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
     private void openKeypad() {
         if (amount == null) return;
         keypad.setMax(amount.getLong("max"));
+        keypad.setWallet(walletOf(amount));
         keypad.open();
         setFocused(null);
     }
@@ -321,7 +331,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         }
         if (amount != null) {
             int textWidth = layout.width() - (amountButton == null ? 0 : 76);
-            graphics.drawString(font, fit("金額: " + keypad.draft(), textWidth),
+            graphics.drawString(font, fit("金額: " + keypad.displayDraft(), textWidth),
                     layout.left(), layout.amountY() + 6, 0xFFFFFF);
         }
         boolean keypadOpen = keypad.isOpen();
@@ -379,7 +389,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
             widget.render(graphics, mouseX, mouseY, partialTick);
         int total = visible.size();
         String page = total == 0 ? "0 / 0"
-                : (scroll[section] + 1) + "-" + Math.min(scroll[section] + layout.capacity(), total) + " / " + total;
+                : Numbers.format(scroll[section] + 1) + "-" + Numbers.format(Math.min(scroll[section] + layout.capacity(), total)) + " / " + Numbers.format(total);
         graphics.drawCenteredString(font, page, layout.left() + layout.width() / 2, layout.footerY() + 6, 0xFFFFFF);
         if (visible.isEmpty()) graphics.drawCenteredString(font, loaded ? "表示する項目はありません" : "読み込み中…",
                 width / 2, layout.top() + 16, 0xCCCCCC);

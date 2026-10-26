@@ -4,6 +4,7 @@ import dev.guildquests.config.ConfigManager;
 import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -33,6 +34,8 @@ public final class BankScreenHandler extends GuildMenu {
     private final Map<Integer, MenuAction> actions = new HashMap<>();
     /** Amount selected via the client keypad, 0..Integer.MAX_VALUE. */
     private long bankAmount;
+    /** Guild coins currently held, published to the keypad as the spendable wallet. */
+    private long walletHeld;
 
     public BankScreenHandler(int syncId, Container playerInventory, ServerPlayer owner, boolean feeWaived) {
         super(GuildMenuKind.BANK, syncId);
@@ -125,16 +128,18 @@ public final class BankScreenHandler extends GuildMenu {
 
         PlayerGuildData data = GuildService.data(owner);
         long held = GuildService.countHeldCoins(owner);
+        walletHeld = held;
         long balance = data.coins;
         if (bankAmount < 0) bankAmount = 0;
 
         // Slot 5 is background only; it supplies the summary line above the row list.
         set(5, GuildItems.header(item(Items.NAME_TAG, "銀行サマリー"),
-                "残高 " + balance + " GC / 借入 " + data.loan + " GC / FX・リボ " + data.debt
-                        + " GC / 滞納 " + (data.delinquent ? "あり" : "なし")));
+                "残高 " + Numbers.gc(balance) + " / 借入 " + Numbers.gc(data.loan)
+                        + " / FX・リボ " + Numbers.gc(data.debt)
+                        + " / 滞納 " + (data.delinquent ? "あり" : "なし")));
 
         // Row 0: held coins / fee / transfer / loan. (Bank balance lives in the header.)
-        set(1, item(ModItems.COIN, "所持コイン: " + held, "インベントリ内のギルドコイン"));
+        set(1, item(ModItems.COIN, "所持コイン: " + Numbers.format(held), "インベントリ内のギルドコイン"));
         set(2, feeWaived
                 ? item(Items.EMERALD, "手数料: 無料", "ギルド銀行ブロック経由のため", "すべての取引が無料です")
                 : item(Items.PAPER, "手数料: " + feePercentText() + "%",
@@ -179,14 +184,14 @@ public final class BankScreenHandler extends GuildMenu {
         if (bankAmount > held) {
             setAction(slot, item(ModItems.COIN, "入金",
                             "所持コインが不足しています",
-                            "所持: " + held + " / 選択: " + bankAmount),
+                            "所持: " + Numbers.format(held) + " / 選択: " + Numbers.format(bankAmount)),
                     (p, b, t) -> { });
             return;
         }
         long fee = GuildService.bankFee(bankAmount, feeWaived);
-        setAction(slot, item(ModItems.COIN, "入金: " + bankAmount,
+        setAction(slot, item(ModItems.COIN, "入金: " + Numbers.format(bankAmount),
                         "クリックで預け入れ",
-                        "手持ち -" + bankAmount + " → 残高 +" + (bankAmount - fee),
+                        "手持ち -" + Numbers.format(bankAmount) + " → 残高 +" + Numbers.format(bankAmount - fee),
                         feeLine(fee)),
                 (p, b, t) -> {
                     if (b == 0) GuildService.bankDeposit(p, bankAmount, feeWaived);
@@ -204,14 +209,14 @@ public final class BankScreenHandler extends GuildMenu {
         if (bankAmount > balance) {
             setAction(slot, item(Items.GOLD_NUGGET, "出金",
                             "銀行残高が不足しています",
-                            "残高: " + balance + " / 選択: " + bankAmount),
+                            "残高: " + Numbers.format(balance) + " / 選択: " + Numbers.format(bankAmount)),
                     (p, b, t) -> { });
             return;
         }
         long fee = GuildService.bankFee(bankAmount, feeWaived);
-        setAction(slot, item(Items.GOLD_NUGGET, "出金: " + bankAmount,
+        setAction(slot, item(Items.GOLD_NUGGET, "出金: " + Numbers.format(bankAmount),
                         "クリックで引き出し",
-                        "残高 -" + bankAmount + " → 手持ち +" + (bankAmount - fee),
+                        "残高 -" + Numbers.format(bankAmount) + " → 手持ち +" + Numbers.format(bankAmount - fee),
                         feeLine(fee)),
                 (p, b, t) -> {
                     if (b == 0) GuildService.bankWithdraw(p, bankAmount, feeWaived);
@@ -228,10 +233,10 @@ public final class BankScreenHandler extends GuildMenu {
                     "残高がなくても購入でき、価格は債務化",
                     ConfigManager.config().miningDebtRepaymentOnly
                             ? "返済は採掘のみ。利息 " + ConfigManager.config().riboInterestPercent + "% / "
-                            + ConfigManager.config().riboIntervalMinutes + "分ごと"
+                            + Numbers.format(ConfigManager.config().riboIntervalMinutes) + "分ごと"
                             : "利息 " + ConfigManager.config().riboInterestPercent + "% / "
-                            + ConfigManager.config().riboIntervalMinutes + "分ごとに "
-                            + ConfigManager.config().riboInstallment + " コインを自動徴収",
+                            + Numbers.format(ConfigManager.config().riboIntervalMinutes) + "分ごとに "
+                            + Numbers.format(ConfigManager.config().riboInstallment) + " コインを自動徴収",
                     ConfigManager.config().miningDebtRepaymentOnly
                             ? "延滞ロック → 採掘で解除"
                             : "返済不能で延滞ロック → クエストで返済"
@@ -260,24 +265,24 @@ public final class BankScreenHandler extends GuildMenu {
         var cfg = ConfigManager.config();
 
         if (delinquent) {
-            set(startSlot, item(Items.REDSTONE_BLOCK, "債務: " + data.debt,
+            set(startSlot, item(Items.REDSTONE_BLOCK, "債務: " + Numbers.format(data.debt),
                     "⚠ 延滞中：ギルド機能ロック中",
                     cfg.miningDebtRepaymentOnly ? "採掘で返済" : "クエスト報酬は全額自動で返済に充当",
                     "完済するまで銀行・残高支払い不可"));
         } else if (hasDebt) {
-            set(startSlot, item(Items.REDSTONE, "債務: " + data.debt,
-                    "次回の返済期限まで約 " + minutesLeft + " 分",
-                    cfg.miningDebtRepaymentOnly ? "返済は採掘のみ" : "残高から " + cfg.riboInstallment + " コインを定期徴収"));
+            set(startSlot, item(Items.REDSTONE, "債務: " + Numbers.format(data.debt),
+                    "次回の返済期限まで約 " + Numbers.format(minutesLeft) + " 分",
+                    cfg.miningDebtRepaymentOnly ? "返済は採掘のみ" : "残高から " + Numbers.format(cfg.riboInstallment) + " コインを定期徴収"));
         } else {
             set(startSlot, item(Items.GOLD_NUGGET, "債務: なし",
                     "支払い方法をリボにすると",
                     "後払い購入（債務）が使える"));
         }
 
-        set(startSlot + 1, item(Items.CLOCK, "次回期限まで: " + minutesLeft + " 分",
-                "周期: " + cfg.riboIntervalMinutes + " 分ごと",
+        set(startSlot + 1, item(Items.CLOCK, "次回期限まで: " + Numbers.format(minutesLeft) + " 分",
+                "周期: " + Numbers.format(cfg.riboIntervalMinutes) + " 分ごと",
                 hasDebt ? (cfg.miningDebtRepaymentOnly ? "採掘で返済" : "自動で残高から徴収") : "現在債務なし"));
-        set(startSlot + 2, item(Items.COPPER_INGOT, cfg.miningDebtRepaymentOnly ? "返済方法: 採掘" : "自動徴収額: " + cfg.riboInstallment,
+        set(startSlot + 2, item(Items.COPPER_INGOT, cfg.miningDebtRepaymentOnly ? "返済方法: 採掘" : "自動徴収額: " + Numbers.format(cfg.riboInstallment),
                 cfg.miningDebtRepaymentOnly ? "設定したブロックを掘って返済" : "周期ごとに徴収される金額",
                 "利息 " + cfg.riboInterestPercent + "% が周期ごとに加算"));
         set(startSlot + 3, item(Items.AMETHYST_SHARD, "利息: " + cfg.riboInterestPercent + "%",
@@ -287,7 +292,7 @@ public final class BankScreenHandler extends GuildMenu {
 
     private String feeLine(long fee) {
         if (feeWaived) return "手数料: 無料（ブロック経由）";
-        return fee > 0 ? "手数料: -" + fee + " コイン" : "手数料: 0 コイン";
+        return fee > 0 ? "手数料: -" + Numbers.format(fee) + " コイン" : "手数料: 0 コイン";
     }
 
     private String feePercentText() {
@@ -297,7 +302,7 @@ public final class BankScreenHandler extends GuildMenu {
     }
 
     private void set(int slot, ItemStack stack) {
-        if (slot == 13) GuildItems.amount(stack, bankAmount, Integer.MAX_VALUE, "入出金額");
+        if (slot == 13) GuildItems.amount(stack, bankAmount, Integer.MAX_VALUE, walletHeld, "入出金額");
         display.setItem(slot, stack);
     }
 

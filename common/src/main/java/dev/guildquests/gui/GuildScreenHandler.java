@@ -8,6 +8,7 @@ import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.model.QuestDefinition;
 import dev.guildquests.model.QuestType;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -114,11 +115,11 @@ public final class GuildScreenHandler extends GuildMenu {
         fillBackground();
         PlayerGuildData data = GuildService.data(owner);
 
-        set(0, item(Items.GOLD_NUGGET, "所持コイン: " + data.coins,
+        set(0, item(Items.GOLD_NUGGET, "所持コイン: " + Numbers.format(data.coins),
                 "電子通貨として保存されています。"));
         set(1, item(Items.NETHER_STAR, "ギルドランク: " + GuildService.rank(data),
-                "累計達成: " + data.completedTotal + " 件"));
-        set(2, item(Items.CLOCK, "同時受注上限: " + ConfigManager.config().maxActiveQuests + " 件",
+                "累計達成: " + Numbers.format(data.completedTotal) + " 件"));
+        set(2, item(Items.CLOCK, "同時受注上限: " + Numbers.format(ConfigManager.config().maxActiveQuests) + " 件",
                 "クエスト報酬に日次上限はありません。"));
         setAction(5, item(Items.SPYGLASS, "ランキング",
                 "クリックでギルドランキングを開きます",
@@ -132,7 +133,7 @@ public final class GuildScreenHandler extends GuildMenu {
         GuildService.ensureDailyBoard(owner.getServer());
         List<DailyQuest> board = GuildPersistentState.get(owner.getServer()).dailyBoard;
 
-        set(4, item(Items.WRITABLE_BOOK, "本日のクエスト（" + board.size() + "問）",
+        set(4, item(Items.WRITABLE_BOOK, "本日のクエスト（" + Numbers.format(board.size()) + "問）",
                 "毎日の抽選で決まります。下の一覧を左クリックして受注します。",
                 "次の抽選まで: " + GuildService.formatGameTime(GuildService.ticksUntilNextDraw(owner.getServer()))));
         set(6, item(Items.BOOK, "受注中",
@@ -180,7 +181,7 @@ public final class GuildScreenHandler extends GuildMenu {
             if (locked) {
                 icon = item(Items.BARRIER, "[LOCK] " + title,
                         quest.description,
-                        "解放条件: 累計 " + quest.requiredCompleted + " 件達成",
+                        "解放条件: 累計 " + Numbers.format(quest.requiredCompleted) + " 件達成",
                         dailyObjectiveLine(daily, quest),
                         rewardLine(reward));
             } else if (completedOneTime) {
@@ -198,7 +199,7 @@ public final class GuildScreenHandler extends GuildMenu {
                 icon = questIcon(quest, "[受注中] " + title,
                         quest.description,
                         activeObjectiveLine(quest, active),
-                        "進捗: " + active.progress + "/" + amount,
+                        "進捗: " + Numbers.format(active.progress) + "/" + Numbers.format(amount),
                         rewardLine(reward));
             } else {
                 setAction(slot, questIcon(quest, title,
@@ -234,7 +235,7 @@ public final class GuildScreenHandler extends GuildMenu {
             ItemStack icon = item(ready ? Items.LIME_DYE : activeIcon(quest),
                     (ready ? "[達成可能] " : "[進行中] ") + title,
                     activeObjectiveLine(quest, active),
-                    "進捗: " + active.progress + "/" + amount,
+                    "進捗: " + Numbers.format(active.progress) + "/" + Numbers.format(amount),
                     rewardLine(reward),
                     (quest.type == QuestType.SUBMIT || quest.type == QuestType.COLLECT) && !ready
                             ? "左クリック: 所持アイテムを納品" : "左クリック: 報酬を受け取る",
@@ -271,7 +272,7 @@ public final class GuildScreenHandler extends GuildMenu {
 
     /** Reward line for a board/active entry. */
     private static String rewardLine(long reward) {
-        return "報酬: " + reward + " コイン";
+        return "報酬: " + Numbers.format(reward) + " コイン";
     }
 
     private static Item activeIcon(QuestDefinition quest) {

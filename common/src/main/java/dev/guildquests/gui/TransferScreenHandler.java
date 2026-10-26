@@ -3,6 +3,7 @@ package dev.guildquests.gui;
 import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -38,6 +39,8 @@ public final class TransferScreenHandler extends GuildMenu {
     private int recipientPage;
     /** Amount to send, 0..9999, set via the client keypad. */
     private long transferAmount;
+    /** Sender's bank balance, published to the keypad as the spendable wallet. */
+    private long walletBalance;
 
     public TransferScreenHandler(int syncId, Container playerInventory, ServerPlayer owner) {
         super(GuildMenuKind.TRANSFER, syncId);
@@ -120,6 +123,7 @@ public final class TransferScreenHandler extends GuildMenu {
 
         PlayerGuildData data = GuildService.data(owner);
         long balance = data.coins;
+        walletBalance = balance;
         if (transferAmount > 9999) transferAmount = 9999;
         ServerPlayer target = currentTransferTarget();
         List<ServerPlayer> candidates = transferCandidates();
@@ -137,7 +141,7 @@ public final class TransferScreenHandler extends GuildMenu {
                 UUID id = candidate.getUUID();
                 setAction(slot, GuildItems.playerHead(owner.getServer(), id, name, (selected ? "● " : "") + name,
                                 selected ? "現在の送金先" : "クリックで送金先に選択",
-                                "残高: " + GuildService.data(candidate).coins),
+                                "残高: " + Numbers.format(GuildService.data(candidate).coins)),
                         (p, b, t) -> {
                             if (b == 0) transferTargetId = id;
                         });
@@ -157,14 +161,14 @@ public final class TransferScreenHandler extends GuildMenu {
                 (p, b, t) -> { if (b == 0) recipientPage++; });
 
         // Column 4 (slots 4, 13, 22): center info / close.
-        set(4, item(ModItems.COIN, "所持コイン: " + GuildService.countHeldCoins(owner),
-                "銀行残高: " + balance,
+        set(4, item(ModItems.COIN, "所持コイン: " + Numbers.format(GuildService.countHeldCoins(owner)),
+                "銀行残高: " + Numbers.format(balance),
                 "送金は銀行残高から引き落とし",
                 "手数料は無料"));
-        set(13, item(Items.PAPER, "送金予定額: " + transferAmount,
+        set(13, item(Items.PAPER, "送金予定額: " + Numbers.format(transferAmount),
                 target == null ? "送金先: 未選択（左の頭を選択）" : "送金先: " + target.getName().getString(),
                 "金額は右の紙・数字頭で調整",
-                "最大 9999 まで"));
+                "最大 " + Numbers.format(9999) + " まで"));
 
         // Confirm button at bottom-right (slot 26).
         if (target == null) {
@@ -179,16 +183,16 @@ public final class TransferScreenHandler extends GuildMenu {
                     (p, b, t) -> { });
         } else if (balance < transferAmount) {
             setAction(26, item(Items.LIME_CONCRETE, "送金決定",
-                            "銀行残高が不足しています（残高: " + balance + "）",
+                            "銀行残高が不足しています（残高: " + Numbers.format(balance) + "）",
                             "送金先: " + target.getName().getString()),
                     (p, b, t) -> { });
         } else {
             String name = target.getName().getString();
             UUID id = target.getUUID();
             long amount = transferAmount;
-            setAction(26, item(Items.LIME_CONCRETE, "送金決定: " + amount,
+            setAction(26, item(Items.LIME_CONCRETE, "送金決定: " + Numbers.format(amount),
                             "クリックで " + name + " へ送金",
-                            "残高 -" + amount + " → " + name + " +" + amount,
+                            "残高 -" + Numbers.format(amount) + " → " + name + " +" + Numbers.format(amount),
                             "手数料: 無料"),
                     (p, b, t) -> {
                         if (b == 0) send(p, id, amount);
@@ -241,7 +245,7 @@ public final class TransferScreenHandler extends GuildMenu {
     private void set(int slot, ItemStack stack) {
         // Publish the keypad payload only after a recipient is chosen, so no amount row
         // (and no keypad) appears while the target is still unselected.
-        if (slot == 13 && transferTargetId != null) GuildItems.amount(stack, transferAmount, 9999, "送金額");
+        if (slot == 13 && transferTargetId != null) GuildItems.amount(stack, transferAmount, 9999, walletBalance, "送金額");
         display.setItem(slot, stack);
     }
 

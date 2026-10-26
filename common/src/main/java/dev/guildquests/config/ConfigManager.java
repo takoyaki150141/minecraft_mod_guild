@@ -101,6 +101,9 @@ public final class ConfigManager {
         c.bankFeePercent = Math.max(0, Math.min(100, c.bankFeePercent));
         c.riboInstallment = Math.max(1, c.riboInstallment);
         c.riboInterestPercent = Math.max(0, Math.min(100, c.riboInterestPercent));
+        // Forced: repayment always allows the balance first, and delinquency force-executes it.
+        // Older config files may still carry true; it is ignored on purpose.
+        c.miningDebtRepaymentOnly = false;
         c.riboIntervalMinutes = Math.max(1, c.riboIntervalMinutes);
         c.auctionFeePercent = Math.max(0, Math.min(100, c.auctionFeePercent));
         c.auctionDurationMinutes = Math.max(1, Math.min(10080, c.auctionDurationMinutes));
@@ -117,7 +120,7 @@ public final class ConfigManager {
         if (c.loanMiningValues == null || c.loanMiningValues.isEmpty()) {
             c.loanMiningValues = new ModConfig().loanMiningValues;
         } else {
-            c.loanMiningValues.replaceAll((k, v) -> v == null ? 0.0 : Math.max(0.0, v));
+            c.loanMiningValues.replaceAll((k, v) -> v == null || !Double.isFinite(v) ? 0.0 : Math.max(0.0, v));
         }
         return c;
     }

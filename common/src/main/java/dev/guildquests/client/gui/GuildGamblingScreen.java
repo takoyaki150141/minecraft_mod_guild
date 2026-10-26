@@ -3,6 +3,7 @@ package dev.guildquests.client.gui;
 import dev.guildquests.gui.GuildClientMenu;
 import dev.guildquests.gui.GuildGamblingView;
 import dev.guildquests.gui.GuildMenuKind;
+import dev.guildquests.util.Numbers;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -15,7 +16,6 @@ import net.minecraft.world.item.TooltipFlag;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
-import java.util.Locale;
 
 /** A playable table or machine, with all actions still owned by the original server menu. */
 public final class GuildGamblingScreen extends GuildMenuScreen {
@@ -114,12 +114,12 @@ public final class GuildGamblingScreen extends GuildMenuScreen {
         int base = kind() == GuildMenuKind.HORSE_RACE ? 36 : 18;
         for (int i = 0; i < 4; i++) {
             int slot = base + i, increment = increments[i];
-            Button minus = button("-" + increment, x + i * (group + 6), y, bw, 20, () -> clickSlot(slot, 1));
-            Button plus = button("+" + increment, x + i * (group + 6) + bw + 3, y, bw, 20, () -> clickSlot(slot, 0));
+            Button minus = button("-" + Numbers.format(increment), x + i * (group + 6), y, bw, 20, () -> clickSlot(slot, 1));
+            Button plus = button("+" + Numbers.format(increment), x + i * (group + 6) + bw + 3, y, bw, 20, () -> clickSlot(slot, 0));
             minus.active = betting() && action(slot) && view.getLong("bet") > 0;
             plus.active = betting() && action(slot) && view.getLong("bet") < view.getLong("balance");
-            minus.setTooltip(Tooltip.create(Component.literal("賭け金を " + increment + " コイン減らす")));
-            plus.setTooltip(Tooltip.create(Component.literal("賭け金を " + increment + " コイン増やす")));
+            minus.setTooltip(Tooltip.create(Component.literal("賭け金を " + Numbers.format(increment) + " コイン減らす")));
+            plus.setTooltip(Tooltip.create(Component.literal("賭け金を " + Numbers.format(increment) + " コイン増やす")));
         }
     }
 
@@ -196,7 +196,7 @@ public final class GuildGamblingScreen extends GuildMenuScreen {
     private String fit(String text, int width) {
         return font.width(text) <= width ? text : font.plainSubstrByWidth(text, Math.max(0, width - font.width("…"))) + "…";
     }
-    private static String coins(long amount) { return String.format(Locale.ROOT, "%,d", amount); }
+    private static String coins(long amount) { return Numbers.format(amount); }
 
     private String rules() {
         return switch (kind()) {

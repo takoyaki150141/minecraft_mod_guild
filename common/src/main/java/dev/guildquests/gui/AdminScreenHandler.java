@@ -8,6 +8,7 @@ import dev.guildquests.fx.FxSettings;
 import dev.guildquests.service.AdminLoanPolicy;
 import dev.guildquests.service.BossEvent;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
@@ -85,8 +86,8 @@ public final class AdminScreenHandler extends GuildMenu {
         if (view.equals("PLAYERS")) players();
         else if (view.equals("SERVER")) server();
         else {
-            set(4, Items.PLAYER_HEAD, "対象: " + name(target), "UUID: " + target, "所持金: " + data().coins + " GC",
-                    "借入: " + data().loan + " GC", "FX・リボ債務: " + data().debt + " GC", "滞納: " + (data().delinquent ? "あり" : "なし"));
+            set(4, Items.PLAYER_HEAD, "対象: " + name(target), "UUID: " + target, "所持金: " + Numbers.gc(data().coins),
+                    "借入: " + Numbers.gc(data().loan), "FX・リボ債務: " + Numbers.gc(data().debt), "滞納: " + (data().delinquent ? "あり" : "なし"));
             switch (view) { case "DETAIL" -> detail(); case "AMOUNT" -> input(); case "CONFIRM" -> confirmation(); }
         }
         if (!notice.isEmpty()) set(0, Items.PAPER, notice);
@@ -101,8 +102,8 @@ public final class AdminScreenHandler extends GuildMenu {
         for (int i = page * 27; i < Math.min(ids.size(), (page + 1) * 27); i++) {
             UUID id = ids.get(i); var wallet = state().get(id); int slot = 9 + i % 27;
             display.setItem(slot, GuildItems.playerHead(owner.getServer(), id, name(id), name(id),
-                    owner.getServer().getPlayerList().getPlayer(id) == null ? "オフライン" : "オンライン", "所持金: " + wallet.coins + " GC",
-                    "借入: " + wallet.loan + " GC", "FX・リボ債務: " + wallet.debt + " GC", "滞納: " + (wallet.delinquent ? "あり" : "なし"), "クリックで管理"));
+                    owner.getServer().getPlayerList().getPlayer(id) == null ? "オフライン" : "オンライン", "所持金: " + Numbers.gc(wallet.coins),
+                    "借入: " + Numbers.gc(wallet.loan), "FX・リボ債務: " + Numbers.gc(wallet.debt), "滞納: " + (wallet.delinquent ? "あり" : "なし"), "クリックで管理"));
             actions.put(slot, b -> { target = id; view = "DETAIL"; notice = ""; });
         }
         if (page > 0) action(45, Items.ARROW, "前のページ", () -> page--);
@@ -117,7 +118,7 @@ public final class AdminScreenHandler extends GuildMenu {
         action(14, Items.TNT, "借入を帳消し", () -> review("CLEAR"), "loan clear と同じ操作", "FX・リボ債務は変更しません", "次の画面で確認して確定");
         action(16, Items.GOLD_NUGGET, "コインを追加", () -> beginAmount("COINS_ADD"), "coins add と同じ操作", "所持金を増やします");
         action(17, Items.GOLD_BLOCK, "コインを設定", () -> beginAmount("COINS_SET"), "coins set と同じ操作", "所持金を指定額へ変更");
-        set(22, Items.PAPER, "現在の管理状態", "所持金: " + data().coins + " GC", "借入: " + data().loan + " GC", "FX・リボ債務: " + data().debt + " GC",
+        set(22, Items.PAPER, "現在の管理状態", "所持金: " + Numbers.gc(data().coins), "借入: " + Numbers.gc(data().loan), "FX・リボ債務: " + Numbers.gc(data().debt),
                 "滞納: " + (data().delinquent ? "あり" : "なし"), "管理者による固定ロック: " + (data().adminDelinquent ? "あり" : "なし"));
         boolean locked = data().delinquent;
         action(31, locked ? Items.REDSTONE_BLOCK : Items.LIME_DYE,
@@ -182,7 +183,7 @@ public final class AdminScreenHandler extends GuildMenu {
     private void input() {
         boolean coinsOp = operation.equals("COINS_ADD") || operation.equals("COINS_SET");
         if (amount < 0) amount = 0;
-        set(13, Items.GOLD_INGOT, "入力額: " + amount + " GC", label(), "数字頭と紙で調整", "最大 " + Integer.MAX_VALUE + " GC");
+        set(13, Items.GOLD_INGOT, "入力額: " + Numbers.gc(amount), label(), "数字頭と紙で調整", "最大 " + Numbers.gc(Integer.MAX_VALUE));
         // Digit heads (thousands/hundreds/tens/ones): left click +1, right click -1 (bank style).
         int[] places = {1000, 100, 10, 1};
         String[] labels = {"千の位", "百の位", "十の位", "一の位"};
@@ -208,7 +209,7 @@ public final class AdminScreenHandler extends GuildMenu {
     private void addPaper(int slot, int add) {
         long preview = Math.min(Integer.MAX_VALUE, amount + add);
         action(slot, Items.PAPER, "＋" + add, () -> amount = Math.min(Integer.MAX_VALUE, amount + add),
-                "現在: " + amount + " → " + preview);
+                "現在: " + Numbers.format(amount) + " → " + Numbers.format(preview));
     }
     private String label() {
         return switch (operation) {
@@ -227,7 +228,7 @@ public final class AdminScreenHandler extends GuildMenu {
         if (coinsOp) {
             long after = operation.equals("COINS_ADD")
                     ? (reviewedCoins > Long.MAX_VALUE - amount ? Long.MAX_VALUE : reviewedCoins + amount) : amount;
-            set(22, Items.PAPER, "確認: " + label(), "対象: " + name(target), "所持金 " + reviewedCoins + " → " + after + " GC", "借入・債務は変更しません");
+            set(22, Items.PAPER, "確認: " + label(), "対象: " + name(target), "所持金 " + Numbers.format(reviewedCoins) + " → " + Numbers.gc(after), "借入・債務は変更しません");
         } else {
             long after = switch (operation) {
                 case "ADD" -> reviewedLoan > Long.MAX_VALUE - amount ? Long.MAX_VALUE : reviewedLoan + amount;
@@ -235,7 +236,7 @@ public final class AdminScreenHandler extends GuildMenu {
                 case "CLEAR" -> 0;
                 default -> reviewedLoan;
             };
-            set(22, Items.PAPER, "確認: " + label(), "対象: " + name(target), "借入 " + reviewedLoan + " → " + after + " GC",
+            set(22, Items.PAPER, "確認: " + label(), "対象: " + name(target), "借入 " + Numbers.format(reviewedLoan) + " → " + Numbers.gc(after),
                     "滞納 " + (reviewedLock ? "あり" : "なし") + " → " + (operation.equals("ON") || !operation.equals("OFF") && reviewedLock ? "あり" : "なし"), "FX・リボ債務と所持金は変更しません");
         }
         action(29, Items.ARROW, "戻る", () -> view = coinsOp || operation.equals("ADD") || operation.equals("SET") ? "AMOUNT" : "DETAIL");
@@ -258,7 +259,7 @@ public final class AdminScreenHandler extends GuildMenu {
             default -> throw new IllegalStateException("Unknown admin operation");
         }
         state().setDirty();
-        String result = name(target) + ": " + label() + " / 所持金 " + data().coins + " GC / 借入 " + data().loan + " GC / 滞納 " + (data().delinquent ? "あり" : "なし");
+        String result = name(target) + ": " + label() + " / 所持金 " + Numbers.gc(data().coins) + " / 借入 " + Numbers.gc(data().loan) + " / 滞納 " + (data().delinquent ? "あり" : "なし");
         owner.createCommandSourceStack().sendSuccess(() -> Component.literal("[Guild Admin] " + result), true);
         notice = "設定を反映しました。"; view = "DETAIL";
     }

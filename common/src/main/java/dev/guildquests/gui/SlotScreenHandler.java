@@ -1,6 +1,7 @@
 package dev.guildquests.gui;
 
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -195,7 +196,7 @@ public final class SlotScreenHandler extends GuildMenu {
         switch (state) {
             case SPINNING -> set(13, item(Items.CLOCK, "回転中…", "リールが止まるまでお待ちください"));
             case DONE -> set(13, item(playerWon ? Items.LIME_CONCRETE : refunded ? Items.YELLOW_CONCRETE : Items.RED_CONCRETE,
-                    result, payout > 0 ? "+" + payout : "-" + betAmount));
+                    result, payout > 0 ? "+" + Numbers.format(payout) : "-" + Numbers.format(betAmount)));
             case BETTING -> set(13, item(Items.BOOK, "配当表",
                     "ダイヤ×80 / エメラルド×50 / 金塊×25",
                     "鉄×12 / りんご×6 / 棒×4",
@@ -205,15 +206,15 @@ public final class SlotScreenHandler extends GuildMenu {
         // Row 2: controls
         switch (state) {
             case BETTING -> {
-                setAction(18, item(Items.PAPER, "賭け ±10", "所持: " + balance, "右クリックで -10"),
+                setAction(18, item(Items.PAPER, "賭け ±10", "所持: " + Numbers.format(balance), "右クリックで -10"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 10); else if (b == 1) betAmount = Math.max(0, betAmount - 10); });
-                setAction(19, item(Items.PAPER, "賭け ±50", "所持: " + balance, "右クリックで -50"),
+                setAction(19, item(Items.PAPER, "賭け ±50", "所持: " + Numbers.format(balance), "右クリックで -50"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 50); else if (b == 1) betAmount = Math.max(0, betAmount - 50); });
-                setAction(20, item(Items.PAPER, "賭け ±100", "所持: " + balance, "右クリックで -100"),
+                setAction(20, item(Items.PAPER, "賭け ±100", "所持: " + Numbers.format(balance), "右クリックで -100"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 100); else if (b == 1) betAmount = Math.max(0, betAmount - 100); });
-                setAction(21, item(Items.PAPER, "賭け ±500", "所持: " + balance, "右クリックで -500"),
+                setAction(21, item(Items.PAPER, "賭け ±500", "所持: " + Numbers.format(balance), "右クリックで -500"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 500); else if (b == 1) betAmount = Math.max(0, betAmount - 500); });
-                set(23, item(Items.GOLD_INGOT, "賭け: " + betAmount));
+                set(23, item(Items.GOLD_INGOT, "賭け: " + Numbers.format(betAmount)));
                 if (betAmount > 0 && betAmount <= balance) {
                     setAction(25, item(Items.LEVER, "スピン", "クリックで回す！"),
                             (p, b, t) -> { if (b == 0) spin(); });

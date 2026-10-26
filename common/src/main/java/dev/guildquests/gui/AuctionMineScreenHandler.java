@@ -5,6 +5,7 @@ import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.AuctionService;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.SimpleContainer;
@@ -119,12 +120,12 @@ public final class AuctionMineScreenHandler extends GuildMenu {
 
         set(0, GuildItems.item(Items.PAPER, "自分の出品・受取ボックス",
                 "出品の取消と、落札品の受け取り"));
-        set(1, GuildItems.item(ModItems.COIN, "残高: " + data.coins + " コイン",
-                "所持コイン: " + GuildService.countHeldCoins(owner)));
-        set(4, GuildItems.item(Items.CHEST, "出品中: " + mine.size() + " 件",
+        set(1, GuildItems.item(ModItems.COIN, "残高: " + Numbers.format(data.coins) + " コイン",
+                "所持コイン: " + Numbers.format(GuildService.countHeldCoins(owner))));
+        set(4, GuildItems.item(Items.CHEST, "出品中: " + Numbers.format(mine.size()) + " 件",
                 "左クリックで出品を取り消します",
                 "入札がある場合は返金されます"));
-        set(5, GuildItems.item(Items.HOPPER, "受取ボックス: " + box.size() + " 件",
+        set(5, GuildItems.item(Items.HOPPER, "受取ボックス: " + Numbers.format(box.size()) + " 件",
                 "左クリックで1件受け取ります"));
         setAction(6, GuildItems.item(Items.LIME_CONCRETE, "受取ボックスを全て受け取る",
                         "入る分だけまとめて受け取ります"),
@@ -143,15 +144,15 @@ public final class AuctionMineScreenHandler extends GuildMenu {
                 lore = new String[]{
                         "形式: オークション",
                         listing.hasBid()
-                                ? "最高入札: " + listing.highestBid + "（" + listing.highestBidderName + "）"
-                                : "開始価格: " + listing.price,
+                                ? "最高入札: " + Numbers.format(listing.highestBid) + "（" + listing.highestBidderName + "）"
+                                : "開始価格: " + Numbers.format(listing.price),
                         "残り時間: " + AuctionService.formatRemaining(listing.expireAt),
                         "左クリック: 出品取消（アイテム返却）"
                 };
             } else {
                 lore = new String[]{
                         "形式: 固定価格",
-                        "価格: " + listing.price + " コイン",
+                        "価格: " + Numbers.format(listing.price) + " コイン",
                         "残り時間: " + AuctionService.formatRemaining(listing.expireAt),
                         "左クリック: 出品取消（アイテム返却）"
                 };

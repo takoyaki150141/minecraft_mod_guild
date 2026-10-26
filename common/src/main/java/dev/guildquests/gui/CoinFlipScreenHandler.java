@@ -2,6 +2,7 @@ package dev.guildquests.gui;
 
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -182,15 +183,15 @@ public final class CoinFlipScreenHandler extends GuildMenu {
         // Row 2: controls
         switch (state) {
             case BETTING -> {
-                setAction(18, item(Items.PAPER, "賭け ±10", "所持: " + balance, "右クリックで -10"),
+                setAction(18, item(Items.PAPER, "賭け ±10", "所持: " + Numbers.format(balance), "右クリックで -10"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 10); else if (b == 1) betAmount = Math.max(0, betAmount - 10); });
-                setAction(19, item(Items.PAPER, "賭け ±50", "所持: " + balance, "右クリックで -50"),
+                setAction(19, item(Items.PAPER, "賭け ±50", "所持: " + Numbers.format(balance), "右クリックで -50"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 50); else if (b == 1) betAmount = Math.max(0, betAmount - 50); });
-                setAction(20, item(Items.PAPER, "賭け ±100", "所持: " + balance, "右クリックで -100"),
+                setAction(20, item(Items.PAPER, "賭け ±100", "所持: " + Numbers.format(balance), "右クリックで -100"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 100); else if (b == 1) betAmount = Math.max(0, betAmount - 100); });
-                setAction(21, item(Items.PAPER, "賭け ±500", "所持: " + balance, "右クリックで -500"),
+                setAction(21, item(Items.PAPER, "賭け ±500", "所持: " + Numbers.format(balance), "右クリックで -500"),
                         (p, b, t) -> { if (b == 0) betAmount = Math.min(balance, betAmount + 500); else if (b == 1) betAmount = Math.max(0, betAmount - 500); });
-                set(23, item(ModItems.COIN, "賭け: " + betAmount));
+                set(23, item(ModItems.COIN, "賭け: " + Numbers.format(betAmount)));
                 if (betAmount > 0 && betAmount <= balance && choice >= 0) {
                     setAction(25, item(Items.LIME_CONCRETE, "コインを投げる", "クリックで勝負！"),
                             (p, b, t) -> { if (b == 0) flip(); });
@@ -203,7 +204,7 @@ public final class CoinFlipScreenHandler extends GuildMenu {
             case FLIPPING -> set(25, item(Items.GRAY_CONCRETE, "投げている…", "お待ちください"));
             case DONE -> {
                 set(23, item(playerWon ? Items.LIME_CONCRETE : Items.RED_CONCRETE,
-                        result, payout > 0 ? "+" + payout : "-" + betAmount));
+                        result, payout > 0 ? "+" + Numbers.format(payout) : "-" + Numbers.format(betAmount)));
                 setAction(25, item(Items.LIME_CONCRETE, "もう一回", "新しいラウンドを開始"),
                         (p, b, t) -> { if (b == 0) newRound(); });
             }

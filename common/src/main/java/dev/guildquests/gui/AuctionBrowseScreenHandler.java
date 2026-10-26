@@ -6,6 +6,7 @@ import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.AuctionService;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.SimpleContainer;
@@ -127,8 +128,8 @@ public final class AuctionBrowseScreenHandler extends GuildMenu {
         if (page >= pages) page = pages - 1;
         if (page < 0) page = 0;
 
-        set(0, GuildItems.item(Items.GOLD_INGOT, "残高: " + data.coins + " コイン",
-                "所持コイン: " + GuildService.countHeldCoins(owner),
+        set(0, GuildItems.item(Items.GOLD_INGOT, "残高: " + Numbers.format(data.coins) + " コイン",
+                "所持コイン: " + Numbers.format(GuildService.countHeldCoins(owner)),
                 "購入・入札は銀行残高から"));
         setAction(1, GuildItems.item(Items.EMERALD, "出品する",
                         "手持ちのアイテムを売りに出す",
@@ -142,7 +143,7 @@ public final class AuctionBrowseScreenHandler extends GuildMenu {
                 (p, b, t) -> { });
 
         set(4, GuildItems.item(Items.PAPER, "ページ " + (page + 1) + " / " + pages,
-                "出品数: " + all.size() + " 件",
+                "出品数: " + Numbers.format(all.size()) + " 件",
                 "手数料: " + feeText() + "%"));
 
         if (page > 0) {
@@ -187,7 +188,7 @@ public final class AuctionBrowseScreenHandler extends GuildMenu {
                 bidAmount = Math.min(MAX_BID, Math.max(0, bidAmount - cur * place + next * place));
             });
         }
-        set(49, GuildItems.item(ModItems.COIN, "入札額: " + bidAmount,
+        set(49, GuildItems.item(ModItems.COIN, "入札額: " + Numbers.format(bidAmount),
                 "オークション出品に入札する金額",
                 "現在の最高額より高い額を指定"));
         addPaper(50, 1);
@@ -210,26 +211,26 @@ public final class AuctionBrowseScreenHandler extends GuildMenu {
                 lore = new String[]{
                         "出品者: " + listing.sellerName,
                         "形式: オークション",
-                        "現在の最高入札: " + listing.highestBid + "（" + listing.highestBidderName + "）",
-                        "最低入札額: " + min,
+                        "現在の最高入札: " + Numbers.format(listing.highestBid) + "（" + listing.highestBidderName + "）",
+                        "最低入札額: " + Numbers.format(min),
                         "残り時間: " + remaining,
-                        mine ? "自分の出品です" : "左クリック: " + bidAmount + " コインで入札"
+                        mine ? "自分の出品です" : "左クリック: " + Numbers.format(bidAmount) + " コインで入札"
                 };
             } else {
                 lore = new String[]{
                         "出品者: " + listing.sellerName,
                         "形式: オークション",
-                        "開始価格: " + listing.price,
-                        "最低入札額: " + min,
+                        "開始価格: " + Numbers.format(listing.price),
+                        "最低入札額: " + Numbers.format(min),
                         "残り時間: " + remaining,
-                        mine ? "自分の出品です" : "左クリック: " + bidAmount + " コインで入札"
+                        mine ? "自分の出品です" : "左クリック: " + Numbers.format(bidAmount) + " コインで入札"
                 };
             }
         } else {
             lore = new String[]{
                     "出品者: " + listing.sellerName,
                     "形式: 固定価格",
-                    "価格: " + listing.price + " コイン",
+                    "価格: " + Numbers.format(listing.price) + " コイン",
                     "残り時間: " + remaining,
                     mine ? "自分の出品です" : "左クリック: 購入"
             };
@@ -250,7 +251,7 @@ public final class AuctionBrowseScreenHandler extends GuildMenu {
         long preview = Math.min(MAX_BID, bidAmount + amount);
         setAction(slot, GuildItems.item(Items.PAPER, "＋" + amount,
                         "クリックで " + amount + " 加算",
-                        "現在: " + bidAmount + " → " + preview),
+                        "現在: " + Numbers.format(bidAmount) + " → " + Numbers.format(preview)),
                 (p, b, t) -> {
                     if (b == 0) bidAmount = Math.min(MAX_BID, bidAmount + amount);
                 });

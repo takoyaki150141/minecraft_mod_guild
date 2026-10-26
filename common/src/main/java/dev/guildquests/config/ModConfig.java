@@ -79,8 +79,11 @@ public final class ModConfig {
     /** Consumer finance (cash loans): allow borrowing against a rank-based credit limit. */
     public boolean consumerLoanEnabled = true;
 
-    /** When true, debt is repaid only by mining; coin-based repayment and quest tribute are disabled. */
-    public boolean miningDebtRepaymentOnly = true;
+    /**
+     * Legacy switch kept in memory only (transient, never written to config.json).
+     * Repayment always allows the balance first, and delinquency force-executes it.
+     */
+    public transient boolean miningDebtRepaymentOnly = false;
 
     /** Interest percent applied to an outstanding loan on every loan interval. */
     public double consumerLoanInterestPercent = 5.0;

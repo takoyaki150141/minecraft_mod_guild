@@ -3,6 +3,7 @@ package dev.guildquests.gui;
 import dev.guildquests.data.GuildPersistentState;
 import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -133,16 +134,16 @@ public final class RankingScreenHandler extends GuildMenu {
             PlayerGuildData temp = new PlayerGuildData();
             temp.completedTotal = e.completed();
             set(9 + i, GuildItems.playerHead(owner.getServer(), e.id(), e.name(), name,
-                    "所持コイン: " + e.coins,
-                    "クエスト達成: " + e.completed + " 件",
+                    "所持コイン: " + Numbers.format(e.coins),
+                    "クエスト達成: " + Numbers.format(e.completed) + " 件",
                     "ランク: " + GuildService.rank(temp)));
         }
 
         // Personal stats.
         PlayerGuildData selfData = GuildService.data(owner);
         set(17, item(Items.COMPASS, "自分: " + GuildService.rank(selfData),
-                "所持コイン: " + selfData.coins,
-                "クエスト達成: " + selfData.completedTotal + " 件"));
+                "所持コイン: " + Numbers.format(selfData.coins),
+                "クエスト達成: " + Numbers.format(selfData.completedTotal) + " 件"));
 
         setAction(26, item(Items.BARRIER, "閉じる"), (p, b, t) -> p.closeContainer());
     }

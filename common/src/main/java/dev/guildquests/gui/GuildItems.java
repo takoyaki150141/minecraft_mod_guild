@@ -55,9 +55,18 @@ public final class GuildItems {
     }
 
     public static ItemStack amount(ItemStack stack, long value, long max, String label) {
+        return amount(stack, value, max, max, label);
+    }
+
+    /**
+     * Same payload plus the amount the player can actually spend, so the client "全額" key
+     * can fill {@code min(max, wallet)}. Callers that have no wallet keep the 4-arg overload.
+     */
+    public static ItemStack amount(ItemStack stack, long value, long max, long wallet, String label) {
         CompoundTag input = new CompoundTag();
         input.putLong("value", value);
         input.putLong("max", max);
+        input.putLong("wallet", wallet);
         input.putString("label", label);
         stack.getOrCreateTag().put("GuildGuiAmount", input);
         return stack;

@@ -1,6 +1,7 @@
 package dev.guildquests.gui;
 
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -213,20 +214,20 @@ public final class HorseRaceScreenHandler extends GuildMenu {
             }
 
             // Row 4 (slots 36-44): betting
-            setAction(36, item(Items.PAPER, "賭け ±10", "所持: " + balance, "右クリックで -10"),
+            setAction(36, item(Items.PAPER, "賭け ±10", "所持: " + Numbers.format(balance), "右クリックで -10"),
                     (p, b, t) -> { if (b == 0) state.betAmount = Math.min(balance, state.betAmount + 10); else if (b == 1) state.betAmount = Math.max(0, state.betAmount - 10); });
-            setAction(37, item(Items.PAPER, "賭け ±50", "所持: " + balance, "右クリックで -50"),
+            setAction(37, item(Items.PAPER, "賭け ±50", "所持: " + Numbers.format(balance), "右クリックで -50"),
                     (p, b, t) -> { if (b == 0) state.betAmount = Math.min(balance, state.betAmount + 50); else if (b == 1) state.betAmount = Math.max(0, state.betAmount - 50); });
-            setAction(38, item(Items.PAPER, "賭け ±100", "所持: " + balance, "右クリックで -100"),
+            setAction(38, item(Items.PAPER, "賭け ±100", "所持: " + Numbers.format(balance), "右クリックで -100"),
                     (p, b, t) -> { if (b == 0) state.betAmount = Math.min(balance, state.betAmount + 100); else if (b == 1) state.betAmount = Math.max(0, state.betAmount - 100); });
-            setAction(39, item(Items.PAPER, "賭け ±500", "所持: " + balance, "右クリックで -500"),
+            setAction(39, item(Items.PAPER, "賭け ±500", "所持: " + Numbers.format(balance), "右クリックで -500"),
                     (p, b, t) -> { if (b == 0) state.betAmount = Math.min(balance, state.betAmount + 500); else if (b == 1) state.betAmount = Math.max(0, state.betAmount - 500); });
-            set(40, item(Items.GOLD_INGOT, "賭け: " + state.betAmount));
+            set(40, item(Items.GOLD_INGOT, "賭け: " + Numbers.format(state.betAmount)));
 
             // Row 5 (slots 45-53): start button
             if (state.betAmount > 0 && state.selectedHorse >= 0 && state.betAmount <= balance) {
                 setAction(49, item(Items.LIME_CONCRETE, "レース開始",
-                        HORSE_NAMES[state.selectedHorse] + " に " + state.betAmount + " コイン"),
+                        HORSE_NAMES[state.selectedHorse] + " に " + Numbers.format(state.betAmount) + " コイン"),
                         (p, b, t) -> { if (b == 0) startRace(); });
             } else {
                 String reason = state.selectedHorse < 0 ? "馬を選択してください"
@@ -252,7 +253,7 @@ public final class HorseRaceScreenHandler extends GuildMenu {
                 }
             }
 
-            set(40, item(Items.CLOCK, "レース中…", state.raceTicks / 20 + " 秒"));
+            set(40, item(Items.CLOCK, "レース中…", Numbers.format(state.raceTicks / 20) + " 秒"));
             if (state.selectedHorse >= 0) {
                 set(36, item(HORSE_ICONS[state.selectedHorse], "応援中: " + HORSE_NAMES[state.selectedHorse], ODDS[state.selectedHorse] + "倍"));
             }
@@ -285,7 +286,7 @@ public final class HorseRaceScreenHandler extends GuildMenu {
                 boolean won = state.selectedHorse == state.winner;
                 long payout = won ? state.betAmount * ODDS[state.selectedHorse] : 0;
                 set(40, item(won ? Items.LIME_CONCRETE : Items.RED_CONCRETE,
-                        won ? "勝ち！ +" + payout : "負け… -" + state.betAmount,
+                        won ? "勝ち！ +" + Numbers.format(payout) : "負け… -" + Numbers.format(state.betAmount),
                         HORSE_NAMES[state.winner] + " が勝ち"));
             }
 

@@ -1,6 +1,7 @@
 package dev.guildquests.gui;
 
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import dev.guildquests.item.ModItems;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
@@ -63,7 +64,7 @@ public final class GambleScreenHandler extends GuildMenu {
         long balance = GuildService.data(owner).coins;
 
         // Row 0: balance info
-        set(4, item(Items.GOLD_INGOT, "所持コイン: " + balance));
+        set(4, item(Items.GOLD_INGOT, "所持コイン: " + Numbers.format(balance)));
 
         // Row 1: game selection
         setAction(10, item(Items.AMETHYST_SHARD, "チンチロ", "クリックでプレイ", "サイコロで勝負！"),

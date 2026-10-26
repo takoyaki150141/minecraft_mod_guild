@@ -4,6 +4,7 @@ import dev.guildquests.config.ConfigManager;
 import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -99,18 +100,18 @@ public final class LoanScreenHandler extends GuildMenu {
         long borrowable = Math.max(0, limit - data.loan);
         long minutesLeft = Math.max(0, (data.nextLoanInterestAt - System.currentTimeMillis()) / 60_000L);
 
-        set(0, item(Items.EMERALD, "借入上限: " + limit,
+        set(0, item(Items.EMERALD, "借入上限: " + Numbers.format(limit),
                 "ギルドランク「" + GuildService.rank(data) + "」の上限",
                 "高ランクほど上限が上がります"));
-        set(1, item(Items.REDSTONE_BLOCK, "現在の債務: " + data.loan,
+        set(1, item(Items.REDSTONE_BLOCK, "現在の債務: " + Numbers.format(data.loan),
                 data.loan > 0 ? "利息 " + cfg.consumerLoanInterestPercent + "% / "
-                        + cfg.consumerLoanIntervalMinutes + "分ごと" : "債務はありません"));
-        set(2, item(Items.GOLD_INGOT, "借入可能: " + borrowable,
+                        + Numbers.format(cfg.consumerLoanIntervalMinutes) + "分ごと" : "債務はありません"));
+        set(2, item(Items.GOLD_INGOT, "借入可能: " + Numbers.format(borrowable),
                 "上限 - 現在の債務"));
-        set(3, item(ModItems.COIN, "残高: " + data.coins,
+        set(3, item(ModItems.COIN, "残高: " + Numbers.format(data.coins),
                 "借入は残高に加算されます"));
-        set(4, item(Items.CLOCK, "次回利息まで: " + (data.loan > 0 ? minutesLeft + " 分" : "-"),
-                "利息: " + cfg.consumerLoanInterestPercent + "% / " + cfg.consumerLoanIntervalMinutes + " 分"));
+        set(4, item(Items.CLOCK, "次回利息まで: " + (data.loan > 0 ? Numbers.format(minutesLeft) + " 分" : "-"),
+                "利息: " + cfg.consumerLoanInterestPercent + "% / " + Numbers.format(cfg.consumerLoanIntervalMinutes) + " 分"));
         set(5, item(Items.WRITABLE_BOOK, "消費者金融",
                 "借入: 残高に加算され、債務になります",
                 cfg.miningDebtRepaymentOnly ? "返済: 設定したブロックの採掘で自動返済" : "返済: 残高から手動で返済",
@@ -130,11 +131,11 @@ public final class LoanScreenHandler extends GuildMenu {
             if (cfg.miningDebtRepaymentOnly) {
                 set(13, item(Items.GRAY_CONCRETE, "返済は採掘のみ",
                         "設定したブロックを掘って返済します",
-                        "残債: " + data.loan));
+                        "残債: " + Numbers.format(data.loan)));
             } else if (data.coins > 0) {
                 setAction(13, item(Items.LIME_CONCRETE, "全額返済",
                                 "残高の範囲で最大まで返済",
-                                "債務 " + data.loan + " / 残高 " + data.coins),
+                                "債務 " + Numbers.format(data.loan) + " / 残高 " + Numbers.format(data.coins)),
                         (p, b, t) -> { if (b == 0) GuildService.repayLoan(p, 0); });
                 repayButton(14, 100);
                 repayButton(15, 500);
@@ -152,18 +153,18 @@ public final class LoanScreenHandler extends GuildMenu {
 
     private void borrowButton(int slot, long amount, long borrowable) {
         long take = Math.min(amount, borrowable);
-        setAction(slot, item(Items.LIME_DYE, "借入 +" + amount,
-                        "クリックで " + take + " コイン借り入れ",
-                        "残高 +" + take + " / 債務 +" + take),
+        setAction(slot, item(Items.LIME_DYE, "借入 +" + Numbers.format(amount),
+                        "クリックで " + Numbers.format(take) + " コイン借り入れ",
+                        "残高 +" + Numbers.format(take) + " / 債務 +" + Numbers.format(take)),
                 (p, b, t) -> { if (b == 0) GuildService.borrowLoan(p, take); });
     }
 
     private void repayButton(int slot, long amount) {
         PlayerGuildData data = GuildService.data(owner);
         long pay = Math.min(amount, Math.min(data.loan, data.coins));
-        setAction(slot, item(Items.RED_DYE, "返済 -" + amount,
-                        "クリックで " + pay + " コイン返済",
-                        "残高 -" + pay + " / 債務 -" + pay),
+        setAction(slot, item(Items.RED_DYE, "返済 -" + Numbers.format(amount),
+                        "クリックで " + Numbers.format(pay) + " コイン返済",
+                        "残高 -" + Numbers.format(pay) + " / 債務 -" + Numbers.format(pay)),
                 (p, b, t) -> { if (b == 0) GuildService.repayLoan(p, amount); });
     }
 

@@ -4,6 +4,7 @@ import dev.guildquests.block.GuildDepositBlockEntity;
 import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -111,8 +112,8 @@ public final class DepositSettingsScreenHandler extends GuildMenu {
 
         set(0, item(Items.GOLD_BLOCK, "入金ブロック設定",
                 "設置者: " + deposit.getOwnerName(),
-                "残高: " + data.coins,
-                "所持コイン: " + held));
+                "残高: " + Numbers.format(data.coins),
+                "所持コイン: " + Numbers.format(held)));
 
         // Notification toggle.
         boolean notify = deposit.isNotifyOnDeposit();
@@ -143,7 +144,7 @@ public final class DepositSettingsScreenHandler extends GuildMenu {
     }
 
     private void depositButton(int slot, int amount, long held) {
-        String label = "預け入れ: " + amount;
+        String label = "預け入れ: " + Numbers.format(amount);
         if (held <= 0) {
             setAction(slot, item(ModItems.COIN, label, "所持コインがありません"),
                     (p, b, t) -> GuildService.depositHeldCoinsTo(p, deposit.getOwnerId(), deposit.getOwnerName(), amount));
@@ -152,7 +153,7 @@ public final class DepositSettingsScreenHandler extends GuildMenu {
         int take = (int) Math.min(amount, held);
         setAction(slot, item(ModItems.COIN, label,
                         "クリックで預け入れ",
-                        "手持ち -" + take + " → 残高 +" + take,
+                        "手持ち -" + Numbers.format(take) + " → 残高 +" + Numbers.format(take),
                         "手数料: 無料"),
                 (p, b, t) -> {
                     if (b == 0 && GuildService.depositHeldCoinsTo(p, deposit.getOwnerId(), deposit.getOwnerName(), amount)) {
@@ -170,7 +171,7 @@ public final class DepositSettingsScreenHandler extends GuildMenu {
         }
         setAction(slot, item(ModItems.COIN, label,
                         "クリックで全部預け入れ",
-                        "手持ち -" + held + " → 残高 +" + held,
+                        "手持ち -" + Numbers.format(held) + " → 残高 +" + Numbers.format(held),
                         "手数料: 無料"),
                 (p, b, t) -> {
                     if (b == 0 && GuildService.depositHeldCoinsTo(p, deposit.getOwnerId(), deposit.getOwnerName(), Long.MAX_VALUE)) {

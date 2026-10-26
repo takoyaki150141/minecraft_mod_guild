@@ -4,6 +4,7 @@ import dev.guildquests.config.ConfigManager;
 import dev.guildquests.data.AuctionListing;
 import dev.guildquests.data.GuildPersistentState;
 import dev.guildquests.data.PlayerGuildData;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -58,7 +59,7 @@ public final class AuctionService {
         }
         GuildPersistentState state = GuildPersistentState.get(seller.getServer());
         if (listingsBy(seller).size() >= ConfigManager.config().auctionMaxListingsPerPlayer) {
-            GuildService.message(seller, "出品数の上限（" + ConfigManager.config().auctionMaxListingsPerPlayer + " 件）に達しています。", ChatFormatting.RED);
+            GuildService.message(seller, "出品数の上限（" + Numbers.format(ConfigManager.config().auctionMaxListingsPerPlayer) + " 件）に達しています。", ChatFormatting.RED);
             return -1;
         }
 
@@ -83,10 +84,10 @@ public final class AuctionService {
         state.setDirty();
 
         GuildService.message(seller, "「" + itemLabel(listing) + "」を"
-                + (auction ? "オークション（開始 " + price + " コイン）" : "固定価格 " + price + " コイン")
+                + (auction ? "オークション（開始 " + Numbers.format(price) + " コイン）" : "固定価格 " + Numbers.format(price) + " コイン")
                 + "で出品しました。", ChatFormatting.GREEN);
         GuildService.broadcast(seller.getServer(), seller.getName().getString() + " が「" + itemLabel(listing) + "」を"
-                + (auction ? "オークション（開始 " + price + " コイン）" : "固定価格 " + price + " コイン")
+                + (auction ? "オークション（開始 " + Numbers.format(price) + " コイン）" : "固定価格 " + Numbers.format(price) + " コイン")
                 + "で出品しました。", ChatFormatting.GOLD);
         return listing.id;
     }
@@ -125,7 +126,7 @@ public final class AuctionService {
         }
         long price = listing.price;
         if (data.coins < price) {
-            GuildService.message(buyer, "残高が不足しています。価格: " + price + " / 残高: " + data.coins, ChatFormatting.RED);
+            GuildService.message(buyer, "残高が不足しています。価格: " + Numbers.format(price) + " / 残高: " + Numbers.format(data.coins), ChatFormatting.RED);
             return false;
         }
 
@@ -139,9 +140,9 @@ public final class AuctionService {
         state.setDirty();
 
         String label = itemLabel(listing);
-        GuildService.message(buyer, "「" + label + "」を " + price + " コインで購入しました。受取ボックスをご確認ください。", ChatFormatting.GREEN);
+        GuildService.message(buyer, "「" + label + "」を " + Numbers.format(price) + " コインで購入しました。受取ボックスをご確認ください。", ChatFormatting.GREEN);
         notify(buyer.getServer(), listing.sellerId, buyer.getName().getString()
-                + " が「" + label + "」を " + price + " コインで購入しました（手数料 " + fee + "）。");
+                + " が「" + label + "」を " + Numbers.format(price) + " コインで購入しました（手数料 " + Numbers.format(fee) + "）。");
         return true;
     }
 
@@ -160,11 +161,11 @@ public final class AuctionService {
         }
         long min = listing.minNextBid(ConfigManager.config().auctionBidStep);
         if (amount < min) {
-            GuildService.message(bidder, "入札額は " + min + " コイン以上にしてください。", ChatFormatting.RED);
+            GuildService.message(bidder, "入札額は " + Numbers.format(min) + " コイン以上にしてください。", ChatFormatting.RED);
             return false;
         }
         if (data.coins < amount) {
-            GuildService.message(bidder, "残高が不足しています。入札: " + amount + " / 残高: " + data.coins, ChatFormatting.RED);
+            GuildService.message(bidder, "残高が不足しています。入札: " + Numbers.format(amount) + " / 残高: " + Numbers.format(data.coins), ChatFormatting.RED);
             return false;
         }
 
@@ -172,7 +173,7 @@ public final class AuctionService {
             PlayerGuildData previous = state.get(listing.highestBidderId);
             previous.coins = safeAdd(previous.coins, listing.highestBid);
             notify(bidder.getServer(), listing.highestBidderId, "「" + itemLabel(listing) + "」の入札が更新されました。"
-                    + listing.highestBid + " コインを残高へ返金しました。");
+                    + Numbers.format(listing.highestBid) + " コインを残高へ返金しました。");
         }
 
         data.coins -= amount;
@@ -181,9 +182,9 @@ public final class AuctionService {
         listing.highestBidderName = bidder.getName().getString();
         state.setDirty();
 
-        GuildService.message(bidder, "「" + itemLabel(listing) + "」に " + amount + " コインで入札しました。", ChatFormatting.GREEN);
+        GuildService.message(bidder, "「" + itemLabel(listing) + "」に " + Numbers.format(amount) + " コインで入札しました。", ChatFormatting.GREEN);
         notify(bidder.getServer(), listing.sellerId, bidder.getName().getString()
-                + " が「" + itemLabel(listing) + "」に " + amount + " コインで入札しました。");
+                + " が「" + itemLabel(listing) + "」に " + Numbers.format(amount) + " コインで入札しました。");
         return true;
     }
 
@@ -200,7 +201,7 @@ public final class AuctionService {
             PlayerGuildData bidder = state.get(listing.highestBidderId);
             bidder.coins = safeAdd(bidder.coins, listing.highestBid);
             notify(seller.getServer(), listing.highestBidderId,
-                    "出品が取り消されたため、" + listing.highestBid + " コインを残高へ返金しました。");
+                    "出品が取り消されたため、" + Numbers.format(listing.highestBid) + " コインを残高へ返金しました。");
         }
         deliver(listing.item, state.get(seller.getUUID()));
         state.auctions.remove(listing);
@@ -236,10 +237,10 @@ public final class AuctionService {
             sellerData.coins = safeAdd(sellerData.coins, price - fee);
             PlayerGuildData winner = state.get(listing.highestBidderId);
             deliver(listing.item, winner);
-            notify(server, listing.highestBidderId, "「" + label + "」のオークションに " + price
+            notify(server, listing.highestBidderId, "「" + label + "」のオークションに " + Numbers.format(price)
                     + " コインで落札しました。受取ボックスをご確認ください。");
-            notify(server, listing.sellerId, "「" + label + "」が " + price
-                    + " コインで落札されました（手数料 " + fee + "）。残高へ入金しました。");
+            notify(server, listing.sellerId, "「" + label + "」が " + Numbers.format(price)
+                    + " コインで落札されました（手数料 " + Numbers.format(fee) + "）。残高へ入金しました。");
         } else {
             deliver(listing.item, state.get(listing.sellerId));
             notify(server, listing.sellerId, "「" + label + "」は入札がなく期限切れとなりました。受取ボックスに戻しています。");
@@ -306,9 +307,9 @@ public final class AuctionService {
         long minutes = millis / 60_000L;
         long hours = minutes / 60;
         long days = hours / 24;
-        if (days > 0) return days + "日" + (hours % 24) + "時間";
-        if (hours > 0) return hours + "時間" + (minutes % 60) + "分";
-        return Math.max(1, minutes) + "分";
+        if (days > 0) return Numbers.format(days) + "日" + Numbers.format(hours % 24) + "時間";
+        if (hours > 0) return Numbers.format(hours) + "時間" + Numbers.format(minutes % 60) + "分";
+        return Numbers.format(Math.max(1, minutes)) + "分";
     }
 
     private static AuctionListing find(GuildPersistentState state, long id) {

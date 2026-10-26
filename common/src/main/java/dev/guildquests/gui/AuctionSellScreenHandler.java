@@ -6,6 +6,7 @@ import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.item.ModItems;
 import dev.guildquests.service.AuctionService;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.util.Numbers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.SimpleContainer;
@@ -158,14 +159,14 @@ public final class AuctionSellScreenHandler extends GuildMenu {
                     held.getHoverName().getString() + " ×" + held.getCount(),
                     "出品予定のアイテム"));
         }
-        set(10, GuildItems.item(ModItems.COIN, "価格: " + price + " コイン",
+        set(10, GuildItems.item(ModItems.COIN, "価格: " + Numbers.format(price) + " コイン",
                 auctionMode ? "オークションの開始価格" : "固定販売価格",
                 "数字頭・紙で調整",
                 "売却時に手数料 " + feeText() + "%"));
-        set(11, GuildItems.item(Items.CLOCK, "出品期間: " + ConfigManager.config().auctionDurationMinutes + " 分",
+        set(11, GuildItems.item(Items.CLOCK, "出品期間: " + Numbers.format(ConfigManager.config().auctionDurationMinutes) + " 分",
                 "期限到来で自動的に精算されます"));
-        set(12, GuildItems.item(Items.BOOK, "出品中: " + AuctionService.listingsBy(owner).size()
-                        + " / " + ConfigManager.config().auctionMaxListingsPerPlayer,
+        set(12, GuildItems.item(Items.BOOK, "出品中: " + Numbers.format(AuctionService.listingsBy(owner).size())
+                        + " / " + Numbers.format(ConfigManager.config().auctionMaxListingsPerPlayer),
                 "上限を超えては出品できません"));
         addPaper(13, 1);
         addPaper(14, 10);
@@ -187,7 +188,7 @@ public final class AuctionSellScreenHandler extends GuildMenu {
         } else {
             setAction(18, GuildItems.item(Items.LIME_CONCRETE, "「" + modeName + "」で出品",
                             held.getHoverName().getString() + " ×" + held.getCount(),
-                            "価格: " + price + " コイン",
+                            "価格: " + Numbers.format(price) + " コイン",
                             "クリックで出品"),
                     (p, b, t) -> {
                         if (b == 0) list(p, auctionMode ? AuctionListing.MODE_AUCTION : AuctionListing.MODE_BUYOUT);
@@ -199,7 +200,7 @@ public final class AuctionSellScreenHandler extends GuildMenu {
         });
         setAction(26, GuildItems.item(Items.BARRIER, "閉じる"), (p, b, t) -> p.closeContainer());
 
-        set(19, GuildItems.item(Items.GOLD_NUGGET, "残高: " + data.coins,
+        set(19, GuildItems.item(Items.GOLD_NUGGET, "残高: " + Numbers.format(data.coins),
                 "出品にはコインはかかりません"));
     }
 
@@ -207,7 +208,7 @@ public final class AuctionSellScreenHandler extends GuildMenu {
         long preview = Math.min(MAX_PRICE, price + amount);
         setAction(slot, GuildItems.item(Items.PAPER, "＋" + amount,
                         "クリックで " + amount + " 加算",
-                        "現在: " + price + " → " + preview),
+                        "現在: " + Numbers.format(price) + " → " + Numbers.format(preview)),
                 (p, b, t) -> {
                     if (b == 0) price = Math.min(MAX_PRICE, price + amount);
                 });
