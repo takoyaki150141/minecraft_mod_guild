@@ -163,16 +163,19 @@ public final class GuildQuestsMod {
                                         }
                                         int price = tier.protectionPrice(ConfigManager.config().bossProtectionPrices);
                                         PlayerGuildData data = GuildService.data(player);
-                                        if (data.coins < price) {
-                                            GuildService.message(player, "コインが足りません（必要 " + Numbers.gc(price) + "）", ChatFormatting.RED);
-                                            return 0;
-                                        }
-                                        if (!GuildService.payCoins(player, price)) {
-                                            GuildService.message(player, "支払いに失敗しました。", ChatFormatting.RED);
-                                            return 0;
+                                        if (price > 0) {
+                                            if (data.coins < price) {
+                                                GuildService.message(player, "コインが足りません（必要 " + Numbers.gc(price) + "）", ChatFormatting.RED);
+                                                return 0;
+                                            }
+                                            if (!GuildService.payCoins(player, price)) {
+                                                GuildService.message(player, "支払いに失敗しました。", ChatFormatting.RED);
+                                                return 0;
+                                            }
                                         }
                                         BossProtection.grant(player);
-                                        GuildService.message(player, "【" + tier.label() + "】ボス保護を " + Numbers.gc(price) + " で購入しました。",
+                                        GuildService.message(player, "【" + tier.label() + "】ボス保護を "
+                                                        + (price > 0 ? Numbers.gc(price) + " で購入しました。" : "無料で購入しました。"),
                                                 ChatFormatting.GREEN);
                                         return 1;
                                     }))));

@@ -20,7 +20,8 @@ public abstract class BossReachMixin {
     private void guildquests$extendBossReach(CallbackInfoReturnable<AABB> cir) {
         double bonus = BossReach.bonus((LivingEntity) (Object) this);
         if (bonus > 0) {
-            cir.setReturnValue(cir.getReturnValue().inflate(bonus));
+            // Horizontal inflation only, matching vanilla's reach box (no vertical bonus).
+            cir.setReturnValue(cir.getReturnValue().inflate(bonus, 0.0, bonus));
         }
     }
 }

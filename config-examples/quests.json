@@ -208,7 +208,7 @@
     "title": "探索：ネザーフォートレス",
     "description": "ネザーフォートレスを発見する",
     "type": "EXPLORE",
-    "target": "minecraft:nether_fortress",
+    "target": "minecraft:fortress",
     "amount": 1,
     "amountMin": 0,
     "amountMax": 0,

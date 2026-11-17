@@ -9,7 +9,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -32,6 +31,14 @@ public final class BossPinRenderer {
 
     public static void init() {
         PlatformClient.onWorldRender(BossPinRenderer::render);
+        PlatformClient.onClientTick(screen -> tickLife());
+    }
+
+    /** Counts the beam down once per client tick (not once per rendered frame). */
+    private static void tickLife() {
+        if (!active) return;
+        if (life > 0) life--;
+        if (life <= 0) active = false;
     }
 
     public static void set(int px, int py, int pz, int lifetimeTicks) {
@@ -55,12 +62,6 @@ public final class BossPinRenderer {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null || client.player == null) return;
         if (!client.level.dimension().location().toString().equals("minecraft:overworld")) return;
-
-        if (life > 0 && client.level.getGameTime() % 2 == 0) life--;
-        if (life <= 0) {
-            active = false;
-            return;
-        }
 
         float alpha = life < 200 ? life / 200f : 1.0f;
         Camera camera = context.camera();

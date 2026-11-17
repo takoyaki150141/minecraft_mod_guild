@@ -64,6 +64,9 @@ public class StockTickerInteractionHandlerMixin {
         if (!ConfigManager.config().createIntegrationEnabled) return shortfall;
         int price = guildquests$fullPrice;
         if (price <= 0 || !guildquests$allCoin) return shortfall;
+        // Nothing is missing: Create already takes the held coins, so charging the balance
+        // (or injecting extra coins) here would make the player pay twice.
+        if (shortfall <= 0) return 0;
 
         PlayerGuildData data = GuildService.data(buyer);
         if (data.delinquent) {
@@ -76,27 +79,25 @@ public class StockTickerInteractionHandlerMixin {
             return shortfall;
         }
         if (GuildService.MODE_RIBO.equals(mode)) {
-            if (!guildquests$injectCoins(buyer, price)) {
+            if (!guildquests$injectCoins(buyer, shortfall)) {
                 GuildService.message(buyer, "インベントリにコインを置けないため購入できませんでした（空きスロットを作ってください）。", ChatFormatting.RED);
                 return shortfall;
             }
-            guildquests$pendingCharge = price;
+            guildquests$pendingCharge = shortfall;
             guildquests$pendingRibo = true;
             return 0;
         }
 
         long balance = data.coins;
-        if (balance < price) {
-            if (shortfall <= 0) return 0;
-            GuildService.message(buyer, "ギルドコイン残高が不足しています。必要: " + price + " / 残高: " + balance, ChatFormatting.RED);
+        if (balance < shortfall) {
+            GuildService.message(buyer, "ギルドコイン残高が不足しています。必要: " + shortfall + " / 残高: " + balance, ChatFormatting.RED);
             return shortfall;
         }
-        if (!guildquests$injectCoins(buyer, price)) {
-            if (shortfall <= 0) return 0;
+        if (!guildquests$injectCoins(buyer, shortfall)) {
             GuildService.message(buyer, "インベントリにコインを置けないため残高からの支払いができませんでした（空きスロットを作ってください）。", ChatFormatting.RED);
             return shortfall;
         }
-        guildquests$pendingCharge = price;
+        guildquests$pendingCharge = shortfall;
         return 0;
     }
 

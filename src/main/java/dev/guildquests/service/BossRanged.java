@@ -59,6 +59,10 @@ public final class BossRanged {
             state = new State();
             state.cooldown = Math.max(10, (int) (40 / Math.max(0.1, tier.attackSpeedMultiplier()))) / 2;
             state.melee = mob.getMainHandItem().copy();
+            if (state.melee.is(Items.BOW)) {
+                // Adopted bosses may have been saved mid-volley; never restore a bow as their melee weapon.
+                state.melee = new ItemStack(tier == BossTier.ELITE ? Items.NETHERITE_SWORD : Items.DIAMOND_SWORD);
+            }
             STATES.put(id, state);
             mob.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BOW));
             mob.setDropChance(EquipmentSlot.MAINHAND, 0.0f);

@@ -4,6 +4,8 @@ import dev.guildquests.GuildQuestsMod;
 import dev.guildquests.platform.ContentRegistrar;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 
@@ -28,7 +30,12 @@ public final class ModEffects {
     public static Holder<MobEffect> bossProtection() {
         Holder<MobEffect> holder = bossProtection;
         if (holder == null) {
-            holder = BuiltInRegistries.MOB_EFFECT.wrapAsHolder(BOSS_PROTECTION_EFFECT);
+            // Resolve by key so the holder always carries the registry id; a keyless direct
+            // holder would break hasEffect/removeEffect and effect save round-trips.
+            holder = BuiltInRegistries.MOB_EFFECT
+                    .getHolder(ResourceKey.create(Registries.MOB_EFFECT, BOSS_PROTECTION_ID))
+                    .orElseThrow(() -> new IllegalStateException(
+                            "guildquests:boss_protection is not registered yet"));
             bossProtection = holder;
         }
         return holder;

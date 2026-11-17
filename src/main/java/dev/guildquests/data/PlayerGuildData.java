@@ -44,6 +44,8 @@ public final class PlayerGuildData {
     public final Set<String> claimedExploreQuestIds = new HashSet<>();
     /** Auction-house mailbox: items owed to this player (winnings, refunds, expired listings). */
     public final List<ItemStack> mailbox = new ArrayList<>();
+    /** Mailbox entries whose item tag could not be decoded; saved verbatim for recovery. */
+    public final List<CompoundTag> unreadableMailbox = new ArrayList<>();
     /** COLLECT quest id -> board day it was last claimed; enforces the per-quest cooldown. */
     public final java.util.Map<String, Long> collectClaimedDay = new java.util.HashMap<>();
 
@@ -138,6 +140,9 @@ public final class PlayerGuildData {
         for (ItemStack stack : mailbox) {
             if (stack != null && !stack.isEmpty()) mailboxList.add(stack.save(registries, new CompoundTag()));
         }
+        for (CompoundTag raw : unreadableMailbox) {
+            mailboxList.add(raw.copy());
+        }
         nbt.put("AuctionMailbox", mailboxList);
 
         CompoundTag collectNbt = new CompoundTag();
@@ -198,8 +203,16 @@ public final class PlayerGuildData {
 
         ListTag mailboxList = nbt.getList("AuctionMailbox", Tag.TAG_COMPOUND);
         for (int i = 0; i < mailboxList.size(); i++) {
-            ItemStack stack = ItemStack.parseOptional(registries, mailboxList.getCompound(i));
-            if (!stack.isEmpty()) data.mailbox.add(stack);
+            CompoundTag raw = mailboxList.getCompound(i);
+            ItemStack stack = ItemStack.parseOptional(registries, raw);
+            if (!stack.isEmpty()) {
+                data.mailbox.add(stack);
+            } else if (!raw.isEmpty()) {
+                data.unreadableMailbox.add(raw.copy());
+                dev.guildquests.GuildQuestsMod.LOGGER.warn(
+                        "[Auction] Mailbox item could not be decoded ({}); kept raw for recovery",
+                        raw.getString("id"));
+            }
         }
 
         if (nbt.contains("CollectClaimedDays", Tag.TAG_COMPOUND)) {

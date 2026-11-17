@@ -259,6 +259,7 @@ public final class AuctionService {
         ItemStack stack = data.mailbox.get(index);
         if (stack == null || stack.isEmpty()) {
             data.mailbox.remove(index);
+            GuildPersistentState.get(player.getServer()).setDirty();
             return true;
         }
         if (!GuildService.canFitStack(player.getInventory(), stack)) {
@@ -268,6 +269,7 @@ public final class AuctionService {
         ItemStack remaining = GuildService.giveStack(player.getInventory(), stack);
         data.mailbox.remove(index);
         if (!remaining.isEmpty()) data.mailbox.add(remaining);
+        GuildPersistentState.get(player.getServer()).setDirty();
         GuildService.message(player, stack.getHoverName().getString() + " ×"
                 + (stack.getCount() - remaining.getCount()) + " を受け取りました。", ChatFormatting.GREEN);
         return true;
@@ -294,6 +296,7 @@ public final class AuctionService {
         } else {
             GuildService.message(player, claimed + " 件のアイテムを受け取りました。", ChatFormatting.GREEN);
         }
+        GuildPersistentState.get(player.getServer()).setDirty();
     }
 
     // ---------------------------------------------------------------------

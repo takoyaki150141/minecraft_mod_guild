@@ -108,6 +108,13 @@ public final class ConfigManager {
         }
         c.bossTierRampStartPercent = Math.max(5, Math.min(100, c.bossTierRampStartPercent));
         c.bossProtectionSeconds = Math.max(0, Math.min(3600, c.bossProtectionSeconds));
+        if (c.bossProtectionPrices == null || c.bossProtectionPrices.length != 5) {
+            c.bossProtectionPrices = new int[]{100, 100, 100, 100, 100};
+        } else {
+            for (int i = 0; i < c.bossProtectionPrices.length; i++) {
+                c.bossProtectionPrices[i] = Math.max(0, Math.min(1_000_000, c.bossProtectionPrices[i]));
+            }
+        }
         c.bossProtectionReleaseRange = Math.max(8, Math.min(128, c.bossProtectionReleaseRange));
         c.bankFeePercent = Math.max(0, Math.min(100, c.bankFeePercent));
         c.riboInstallment = Math.max(1, c.riboInstallment);
@@ -145,6 +152,11 @@ public final class ConfigManager {
             if (q.description == null) q.description = "";
             if (q.type == null) q.type = QuestType.KILL;
             if (q.target == null) q.target = "";
+            if ("minecraft:nether_fortress".equals(q.target)) {
+                // 1.20.1 configs used a structure id that does not exist in 1.21.1.
+                q.target = "minecraft:fortress";
+                GuildQuestsMod.LOGGER.info("Migrated quest {} structure target to minecraft:fortress", q.id);
+            }
             q.amount = Math.max(1, q.amount);
             if (q.targets != null) {
                 List<String> cleaned = new ArrayList<>();
@@ -335,7 +347,7 @@ public final class ConfigManager {
         structure.type = QuestType.EXPLORE;
         structure.exploreMode = ExploreMode.STRUCTURE;
         structure.dimension = "minecraft:the_nether";
-        structure.target = "minecraft:nether_fortress";
+        structure.target = "minecraft:fortress";
         structure.y = 64;
         structure.radius = 32;
         structure.amount = 1;

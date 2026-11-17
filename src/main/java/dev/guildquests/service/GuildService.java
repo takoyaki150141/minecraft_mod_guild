@@ -804,8 +804,9 @@ public final class GuildService {
             ResourceLocation id = safeIdentifier(quest.target);
             if (id == null) return false;
             ResourceKey<Structure> key = ResourceKey.create(Registries.STRUCTURE, id);
-            Structure structure = world.registryAccess().lookupOrThrow(Registries.STRUCTURE).getOrThrow(key).value();
-            StructureStart start = world.structureManager().getStructureWithPieceAt(pos, structure);
+            var structureHolder = world.registryAccess().lookupOrThrow(Registries.STRUCTURE).get(key);
+            if (structureHolder.isEmpty()) return false;
+            StructureStart start = world.structureManager().getStructureWithPieceAt(pos, structureHolder.get().value());
             return start != null && start.isValid();
         }
         return false;

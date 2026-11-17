@@ -27,7 +27,7 @@ public final class NeoForgeNetwork {
 
     /** Must be called during mod construction, before the network registry is locked. */
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar(PROTOCOL);
+        var registrar = event.registrar(PROTOCOL).optional();
         registrar.playToServer(OpenGuildC2S.TYPE, OpenGuildC2S.STREAM_CODEC, NeoForgeNetwork::handleOpenGuild);
         registrar.playToClient(BossPinS2C.TYPE, BossPinS2C.STREAM_CODEC, NeoForgeNetwork::handleBossPin);
         registrar.playToServer(GuiAmountC2S.TYPE, GuiAmountC2S.STREAM_CODEC, NeoForgeNetwork::handleGuiAmount);

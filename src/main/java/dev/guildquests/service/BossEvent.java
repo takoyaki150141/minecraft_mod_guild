@@ -91,7 +91,12 @@ public final class BossEvent {
     public static void init() {
         Platform.onServerTick(BossEvent::tick);
         Platform.onServerStarted(BossEvent::adoptPersisted);
-        Platform.onServerStopped(server -> BossProtection.reset());
+        Platform.onServerStopped(server -> {
+            BossProtection.reset();
+            BossRanged.reset();
+            BossReach.clearAll();
+            reset();
+        });
         Platform.onAllowDamage((entity, source, amount) -> {
             // A protected player (the guildquests:boss_protection effect) is untouchable for bosses.
             if (entity instanceof ServerPlayer player && BossProtection.isProtected(player)
@@ -118,6 +123,17 @@ public final class BossEvent {
             BossProtection.onPlayerDeath(entity, source);
             onDeath(entity, source);
         });
+    }
+
+    /** Clears per-server state so loading another world in the same JVM starts clean. */
+    public static void reset() {
+        bosses.clear();
+        lastSpawned = null;
+        pinned = null;
+        pinLife = 0;
+        ticker = 0;
+        viewTicker = 0;
+        adoptTicker = 0;
     }
 
     private static boolean isEnvironmental(DamageSource source) {
@@ -550,6 +566,7 @@ public final class BossEvent {
         if (server == null) return;
 
         BossRanged.clear(entity.getUUID());
+        BossReach.clear(entity);
         BossInstance instance = bosses.remove(entity.getUUID());
         boolean wasPinned = entity.getUUID().equals(pinned);
         if (instance != null) {
@@ -694,6 +711,11 @@ public final class BossEvent {
         // Re-apply the ramp on adoption so a restart keeps the weakened damage.
         if (entity instanceof Mob mob) {
             applyPowerRamp(mob, power);
+            BossReach.set(mob, tier.reachBonus());
+            if (mob.getMainHandItem().is(Items.BOW)) {
+                mob.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                        new ItemStack(tier == BossTier.ELITE ? Items.NETHERITE_SWORD : Items.DIAMOND_SWORD));
+            }
         }
 
         // Ensure adopted bosses also resist knockback (anti-cheese).

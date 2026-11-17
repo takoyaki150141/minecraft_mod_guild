@@ -20,6 +20,8 @@ public final class AuctionListing {
     public UUID sellerId;
     public String sellerName = "";
     public ItemStack item = ItemStack.EMPTY;
+    /** Raw NBT kept when a stack fails to decode, so the escrowed item is not lost on save. */
+    public CompoundTag rawItem;
     /** BUYOUT or AUCTION. */
     public String mode = MODE_BUYOUT;
     /** Fixed buyout price, or the starting bid for auctions. */
@@ -50,7 +52,7 @@ public final class AuctionListing {
         nbt.putLong("Id", id);
         if (sellerId != null) nbt.putUUID("SellerId", sellerId);
         nbt.putString("SellerName", sellerName);
-        nbt.put("Item", item.save(registries, new CompoundTag()));
+        nbt.put("Item", item.isEmpty() && rawItem != null ? rawItem : item.save(registries, new CompoundTag()));
         nbt.putString("Mode", mode);
         nbt.putLong("Price", price);
         nbt.putLong("HighestBid", highestBid);
@@ -67,7 +69,8 @@ public final class AuctionListing {
         listing.sellerId = nbt.contains("SellerId") ? nbt.getUUID("SellerId") : null;
         listing.sellerName = nbt.getString("SellerName");
         if (nbt.contains("Item", Tag.TAG_COMPOUND)) {
-            listing.item = ItemStack.parseOptional(registries, nbt.getCompound("Item"));
+            listing.rawItem = nbt.getCompound("Item");
+            listing.item = ItemStack.parseOptional(registries, listing.rawItem);
         }
         listing.mode = nbt.contains("Mode") ? nbt.getString("Mode") : MODE_BUYOUT;
         listing.price = Math.max(0, nbt.getLong("Price"));

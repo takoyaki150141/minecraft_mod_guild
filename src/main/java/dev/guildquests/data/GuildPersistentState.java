@@ -5,7 +5,6 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
@@ -26,6 +25,8 @@ public final class GuildPersistentState extends SavedData {
     public final List<PublishedQuest> publishedQuests = new ArrayList<>();
     /** Active auction-house listings (items escrowed server-side). */
     public final List<AuctionListing> auctions = new ArrayList<>();
+    /** Listings whose item tag could not be decoded; kept verbatim for recovery. */
+    public final List<CompoundTag> unreadableAuctions = new ArrayList<>();
     /** Next auction listing id to hand out. */
     public long nextAuctionId = 1;
 
@@ -71,6 +72,11 @@ public final class GuildPersistentState extends SavedData {
             auctionNbt.add(listing.toNbt(registries));
         }
         nbt.put("Auctions", auctionNbt);
+        ListTag unreadableNbt = new ListTag();
+        for (CompoundTag raw : unreadableAuctions) {
+            unreadableNbt.add(raw.copy());
+        }
+        nbt.put("UnreadableAuctions", unreadableNbt);
         nbt.putLong("NextAuctionId", Math.max(1, nextAuctionId));
         return nbt;
     }
@@ -98,7 +104,20 @@ public final class GuildPersistentState extends SavedData {
         ListTag auctionNbt = nbt.getList("Auctions", Tag.TAG_COMPOUND);
         for (int i = 0; i < auctionNbt.size(); i++) {
             AuctionListing listing = AuctionListing.fromNbt(auctionNbt.getCompound(i), registries);
-            if (listing.sellerId != null && !listing.item.isEmpty()) state.auctions.add(listing);
+            if (listing.sellerId == null) continue;
+            if (listing.item.isEmpty()) {
+                CompoundTag raw = listing.rawItem != null ? listing.rawItem.copy() : auctionNbt.getCompound(i).copy();
+                state.unreadableAuctions.add(raw);
+                dev.guildquests.GuildQuestsMod.LOGGER.warn(
+                        "[Auction] Listing {} has an undecodable item ({}); kept raw for recovery",
+                        listing.id, raw.getString("id"));
+                continue;
+            }
+            state.auctions.add(listing);
+        }
+        ListTag unreadableNbt = nbt.getList("UnreadableAuctions", Tag.TAG_COMPOUND);
+        for (int i = 0; i < unreadableNbt.size(); i++) {
+            state.unreadableAuctions.add(unreadableNbt.getCompound(i).copy());
         }
         state.nextAuctionId = Math.max(1, nbt.getLong("NextAuctionId"));
         return state;
@@ -106,7 +125,7 @@ public final class GuildPersistentState extends SavedData {
 
     public static GuildPersistentState get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(GuildPersistentState::new, GuildPersistentState::fromNbt, DataFixTypes.LEVEL),
+                new SavedData.Factory<>(GuildPersistentState::new, GuildPersistentState::fromNbt),
                 SAVE_ID
         );
     }
