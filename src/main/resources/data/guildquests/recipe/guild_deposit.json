@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "PPP",
+    "PCP",
+    "PPP"
+  ],
+  "key": {
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "C": {
+      "item": "guildquests:coin"
+    }
+  },
+  "result": {
+    "id": "guildquests:guild_deposit",
+    "count": 1
+  }
+}

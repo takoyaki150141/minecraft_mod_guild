@@ -1,9 +1,9 @@
-# サーバー自動更新（Fabric / Forge）
+# サーバー自動更新（NeoForge）
 
-Minecraft 1.20.1 / Java 17 の Fabric・Forge 専用サーバーに対応します。バージョンは **26.12.1** です。
+Minecraft 1.21.1 / Java 21 の NeoForge 専用サーバーに対応します。バージョンは **26.16.1** です。
 
-初回はサーバーを終了し、既存の GuildQuests JAR を使用中のローダー用の26.12.1 JARに置き換えます。
-クライアントも同じローダー・同じModバージョンに揃えてください。
+初回はサーバーを終了し、既存の GuildQuests JAR を 26.16.1 JAR に置き換えます。
+クライアントも同じModバージョンに揃えてください。
 
 ## 設定
 
@@ -40,7 +40,7 @@ Minecraft 1.20.1 / Java 17 の Fabric・Forge 専用サーバーに対応しま�
 ## 自動再起動を使う（Windows）
 
 `start-server.ps1` をサーバーフォルダーへ配置し、そのフォルダーから起動します。
-Fabricはサーバー起動JAR、Forgeはインストーラーが生成した `run.bat` と同じ場所です。
+NeoForgeはインストーラーが生成した `run.bat` と同じ場所です。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1
@@ -49,35 +49,32 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1
 ローダーは自動判定します。明示する場合:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader Forge
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader Fabric
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader NeoForge
 ```
 
-同じフォルダーに両方のローダーがある場合は `-Loader` を指定してください。
-Forgeは公式の `libraries/net/minecraftforge/forge/<バージョン>/win_args.txt` から起動し、`user_jvm_args.txt` も読み込みます。
-複数のForgeバージョンがある場合は使用する引数ファイルを指定します。
+NeoForge 1.21.1は `libraries/net/neoforged/forge/<バージョン>/win_args.txt` から起動し、`user_jvm_args.txt` も読み込みます。
+複数のNeoForgeバージョンがある場合は使用する引数ファイルを指定します。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader Forge -ForgeArgsFile "libraries/net/minecraftforge/forge/1.20.1-47.2.0/win_args.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader NeoForge -ForgeArgsFile "libraries/net/neoforged/forge/1.21.1-21.1.267/win_args.txt"
 ```
 
 メモリは `-MinMemory 1G -MaxMemory 4G`、Javaの実行ファイルは `-JavaPath "Javaのパス"` で変更できます。
-メモリ指定はForgeの `user_jvm_args.txt` より優先します。
-FabricのサーバーJAR名は `-ServerJar fabric-server-launch.jar` で変更できます。
+メモリ指定は `user_jvm_args.txt` より優先します。
 
 更新のために停止した場合だけ、JARの適用完了を待って自動起動します。
 通常の `stop` コマンドや、更新要求のないクラッシュでは再起動しません。
-通常のForge `run.bat` や `java` から起動した場合も終了後の差し替えは行いますが、次の起動は手動です。
+通常のNeoForge `run.bat` や `java` から起動した場合も終了後の差し替えは行いますが、次の起動は手動です。
 サーバー管理サービスを使う場合は、JARの適用完了後にMinecraftを起動してください。
 
 ## Linux
 
-同じ場所に `start-server.sh` を配置して起動します。Forgeでは `unix_args.txt` を利用します。
+同じ場所に `start-server.sh` を配置して起動します。NeoForgeでは `unix_args.txt` を利用します。
 
 ```sh
 sh start-server.sh
-LOADER=forge sh start-server.sh
-FORGE_ARGS_FILE=libraries/net/minecraftforge/forge/1.20.1-47.2.0/unix_args.txt sh start-server.sh
+LOADER=neoforge sh start-server.sh
+FORGE_ARGS_FILE=libraries/net/neoforged/forge/1.21.1-21.1.267/unix_args.txt sh start-server.sh
 ```
 
 `JAVA_PATH`、`MIN_MEMORY`、`MAX_MEMORY`、`SERVER_JAR` も環境変数で指定できます。
@@ -86,17 +83,16 @@ FORGE_ARGS_FILE=libraries/net/minecraftforge/forge/1.20.1-47.2.0/unix_args.txt s
 
 現在のローダーに合う安定版ReleaseのJARを選びます。
 
-- Fabric: `guildquests_fabric-1.20.1_<数値バージョン>.jar`
-- Forge: `guildquests_forge-1.20.1_<数値バージョン>.jar`
+- NeoForge: `guildquests_neoforge-1.21.1_<数値バージョン>.jar`
 
-サイズ・GitHub Release AssetのSHA-256ダイジェスト（必須）・全エントリーのCRCを検証し、Fabricは `fabric.mod.json`、Forgeは `META-INF/mods.toml` からMod ID・バージョン・ローダーと依存条件を確認します。
-Forgeのバージョン範囲にはForgeと同じMaven形式を使用し、Javaの要件、必須Mod、導入済みの任意依存Modも検証します。
+サイズ・GitHub Release AssetのSHA-256ダイジェスト（必須）・全エントリーのCRCを検証し、`META-INF/neoforge.mods.toml` からMod ID・バージョン・ローダーと依存条件を確認します。
+バージョン範囲にはNeoForgeと同じMaven形式を使用し、Javaの要件、必須Mod、導入済みの任意依存Modも検証します。
 他ローダーのJARや非対応のMinecraftバージョンは適用せず、サーバーを稼働させたまま再試行します。
 ドラフト・プレリリース・同じ版・古い版・該当JARのないReleaseも適用しません。
 SHA-256ダイジェストがないReleaseは適用しません。
 
 ダウンロードは `mods` 外の `config/guildquests/update/` で行います。
-検証後、Java 17だけで動く独立ヘルパーが元のJavaプロセスの終了を待ち、現在のJARを `update/backups/` へ保存して差し替えます。
+検証後、Java 21だけで動く独立ヘルパーが元のJavaプロセスの終了を待ち、現在のJARを `update/backups/` へ保存して差し替えます。
 Windowsのファイルロックに対応し、バックアップは自動削除しません。
 
 適用失敗時は元のJARを可能な限り復元し、`pending-install.properties` を残します。

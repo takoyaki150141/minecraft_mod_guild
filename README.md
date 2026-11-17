@@ -1,6 +1,6 @@
-# Guild Quests & Economy (Fabric / Forge 1.20.1)
+# Guild Quests & Economy (NeoForge 1.21.1)
 
-Minecraft 1.20.1 の Fabric / Forge 向けに、クエスト、ギルド通貨、銀行、ギャンブルを単体で実装した Mod です。FTB Quests や Q Shop などへの依存はありません。
+Minecraft 1.21.1 の NeoForge 向けに、クエスト、ギルド通貨、銀行、ギャンブルを単体で実装した Mod です。FTB Quests や Q Shop などへの依存はありません。
 
 ## 主な機能
 
@@ -84,35 +84,33 @@ Minecraft 1.20.1 の Fabric / Forge 向けに、クエスト、ギルド通貨�
 
 ## 必要環境
 
-- Minecraft 1.20.1
-- Fabric: Fabric Loader 0.16.10 以上、Fabric API 0.92.x+1.20.1
-- Forge: Forge 47.2.0（1.20.1）
-- Java 17
+- Minecraft 1.21.1
+- NeoForge 21.1.267（1.21.1）
+- Java 21
 - （任意）Create — ストックティッカー連携を使う場合
 
 ## ビルド
 
-ビルドには JDK 21 と同梱の Gradle Wrapper を使います。生成した Mod の動作要件は Java 17 です。
+ビルドには JDK 21 と同梱の Gradle Wrapper を使います。生成した Mod の動作要件も Java 21 です。
 
 ```bash
-./gradlew :common:test :fabric:build :forge:build
+./gradlew build
 ```
 
 生成物:
 
 ```text
-fabric/build/libs/guildquests_fabric-1.20.1_26.15.2.jar
-forge/build/libs/guildquests_forge-1.20.1_26.15.2.jar
+build/libs/guildquests_neoforge-1.21.1_26.16.1.jar
 ```
 
 ## 導入
 
-1. Fabric または Forge で Minecraft 1.20.1 を用意します。
-2. ローダーに合う 26.15.2 の JAR を `mods/` へ配置します。Fabric では Fabric API も必要です。ワールドと設定を保存し、古い GuildQuests の JAR は重複させず置き換えます。
+1. NeoForge で Minecraft 1.21.1 を用意します。
+2. 26.16.1 の JAR を `mods/` へ配置します。ワールドと設定を保存し、古い GuildQuests の JAR は重複させず置き換えます。
 3. 一度起動すると `config/guildquests/` が作成されます。
 4. 設定を変更したら、サーバーを再起動するか `/guildadmin reload` を実行します。
 
-Fabric版・Forge版では、クエスト・銀行・送金・消費者金融・全ギャンブル・ランキング・オークション・管理・入金ブロック設定を専用のボタンGUIで操作します。背景のワールドを動かしたまま暗転して表示し、ウィンドウサイズとGUIスケールに応じて1〜3列へ並べ替えます。長い一覧は画面下の矢印、マウスホイール、PageUp/PageDownで切り替えます。
+NeoForge版では、クエスト・銀行・送金・消費者金融・全ギャンブル・ランキング・オークション・管理・入金ブロック設定を専用のボタンGUIで操作します。背景のワールドを動かしたまま暗転して表示し、ウィンドウサイズとGUIスケールに応じて1〜3列へ並べ替えます。長い一覧は画面下の矢印、マウスホイール、PageUp/PageDownで切り替えます。
 
 銀行・送金・出品・入札・管理の金額は、「入力」でテンキーを開き、画面の数字ボタンまたは上部のテキスト入力欄で指定します。キーボードでの編集・貼り付けに対応し、「確定」またはEnterで金額を反映します。取引はその後に各操作ボタンで実行します。入力中のEscは編集を取り消してテンキーを閉じます。銀行の送金・返済は「入出金」タブにまとまっています。サーバーとクライアントの両方に同じ改修版JARを導入してください。詳細は[GUI.md](GUI.md)を参照してください。
 
@@ -135,7 +133,7 @@ Fabric版・Forge版では、クエスト・銀行・送金・消費者金融・
 
 ## GUI 構成（サーバー内部の表示枠）
 
-以下の枠数は状態同期に使う内部形式です。Fabric・Forgeの画面上ではチェストのマス目や固定座標を使わず、内容をボタンと説明へ配置します。
+以下の枠数は状態同期に使う内部形式です。NeoForgeの画面上ではチェストのマス目や固定座標を使わず、内容をボタンと説明へ配置します。
 
 | 画面 | サイズ | 内容 |
 |---|---|---|
@@ -158,7 +156,7 @@ Fabric版・Forge版では、クエスト・銀行・送金・消費者金融・
 ```text
 config/guildquests/config.json
 config/guildquests/quests.json
-config/guildquests/server-update.json  # Fabric / Forge 専用サーバー
+config/guildquests/server-update.json  # NeoForge 専用サーバー
 ```
 
 ### config.json
@@ -301,13 +299,13 @@ STRUCTURE は、プレイヤーの現在座標が対象構造物の内部に入�
 - ボスの環境ダメージ（溶岩・落下など）による撃破は無効です。対策として、落下保護と脱出テレポートが入っています。
 - 友人のリポジトリへの PR 手順と記入例は [PR_GUIDE.md](PR_GUIDE.md) にあります。
 
-## サーバーの自動更新（Fabric / Forge）
+## サーバーの自動更新（NeoForge）
 
 専用サーバーで GitHub Releases を定期確認し、最初の検出から設定した時間を待って更新します。
 ダウンロードした JAR はリリースの SHA-256 と照合し、一致しない場合やダイジェストがない場合は適用しません。
 設定は `config/guildquests/server-update.json` に自動生成されます。初期値は 30 分ごとの確認と、検出後の 30 分待機です。
 `/guildadmin reload` または管理 GUI の設定再読込で変更を反映できます。
 
-自動で起動し直すには、付属の `start-server.ps1` / `start-server.sh` から起動します。Fabric と Forge を自動判定し、Forge の引数ファイルによる起動にも対応しています。
+自動で起動し直すには、付属の `start-server.ps1` / `start-server.sh` から起動します。NeoForge の引数ファイルによる起動に対応しています。
 
 設定の全項目と、ローダー別の導入・起動・復旧手順は [SERVER_UPDATE.md](SERVER_UPDATE.md) を参照してください。

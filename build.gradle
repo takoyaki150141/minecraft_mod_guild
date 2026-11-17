@@ -1,60 +1,73 @@
 plugins {
-    id 'dev.architectury.loom' version '1.17-SNAPSHOT' apply false
-    id 'architectury-plugin' version '3.5-SNAPSHOT'
-    id 'com.gradleup.shadow' version '9.4.3' apply false
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
-architectury {
-    minecraft = project.minecraft_version
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = "${project.archives_name}_neoforge-${project.minecraft_version}"
 }
 
-allprojects {
-    group = rootProject.maven_group
-    version = rootProject.mod_version
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    withSourcesJar()
 }
 
-subprojects {
-    apply plugin: 'dev.architectury.loom'
-    apply plugin: 'architectury-plugin'
+neoForge {
+    version = project.neo_version
 
-    base {
-        archivesName = "$rootProject.archives_name-$project.name"
+    parchment {
+        minecraftVersion = project.parchment_minecraft_version
+        mappingsVersion = project.parchment_mappings_version
     }
 
-    repositories {
-        mavenCentral()
-        maven {
-            name = 'curse maven'
-            url = 'https://cursemaven.com'
-        }
-        maven {
-            name = 'modrinth'
-            url = 'https://api.modrinth.com/maven'
+    runs {
+        client { client() }
+        server {
+            server()
+            programArgument '--nogui'
         }
     }
 
-    loom {
-        silentMojangMappingsLicense()
+    mods {
+        guildquests {
+            sourceSet sourceSets.main
+        }
     }
 
-    dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.officialMojangMappings()
-    }
-
-    java {
-        toolchain { languageVersion = JavaLanguageVersion.of(17) }
-        withSourcesJar()
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    tasks.withType(JavaCompile).configureEach {
-        it.options.release = 17
-        it.options.encoding = 'UTF-8'
-        it.options.compilerArgs << '-Xmaxerrs' << '5000'
-    }
-    tasks.withType(JavaExec).configureEach {
-        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    unitTest {
+        enable()
+        testedMod = mods.guildquests
     }
 }
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+}
+
+dependencies {
+    compileOnly "maven.modrinth:create:${project.create_version}"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs << '-Xmaxerrs' << '5000'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand version: inputs.properties.version
+    }
+}
+
+test { useJUnitPlatform() }

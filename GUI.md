@@ -1,4 +1,4 @@
-# Fabric / Forge 1.20.1 ボタンGUI
+# NeoForge 1.21.1 ボタンGUI
 
 ## 対象
 
@@ -27,9 +27,9 @@ main `214a33b5764f01dabc78d191853b5564c8fd0b93`を基準にしています。`fe
 
 `GuildGuiLayout`が現在のGUI座標系の幅・高さから列数、カード幅、表示行数とページ数を計算します。狭い画面は1列、広い画面は最大3列で、文字は省略表示とツールチップで確認できます。`isPauseScreen()`はfalse、背景はバニラの`renderBackground()`で毎フレーム暗転します。ワールドの画像を固定したり、ゲーム更新を止めたりしません。クエスト・残高・送金先などは約1秒ごとに更新し、ゲームのアニメーションは既存のサーバー更新を使用します。
 
-Fabric・Forgeともに同じ画面・サーバーハンドラーを使用します。ForgeではDeferredRegisterでMenuTypeを登録し、クライアント初期化時に画面を接続します。金額はForgeのSimpleChannelで送信します。Forgeの通信バージョンは4へ更新しており、サーバー・クライアント双方の更新が必要です。
+NeoForgeではDeferredRegisterでMenuTypeを登録し、RegisterMenuScreensEventで画面を接続します。金額はCustomPacketPayloadで送信します。通信バージョンは4で、サーバー・クライアント双方の更新が必要です。
 
-Forgeではキー設定をMod構築時に登録し、ブロックの描画設定はコンテンツ登録後のFMLClientSetupEventで適用します。登録前にModBlocksを初期化してレジストリー凍結の例外が出るのを防ぎます。
+NeoForgeではキー設定をMod構築時に登録し、ブロックの描画設定はコンテンツ登録後のFMLClientSetupEventで適用します。登録前にModBlocksを初期化してレジストリー凍結の例外が出るのを防ぎます。
 
 ## ギャンブル専用画面
 
@@ -52,19 +52,3 @@ Forgeではキー設定をMod構築時に登録し、ブロックの描画設定
 
 描画に必要な公開情報は、既存のコンテナー同期で`GuildGamblingView`として渡します。伏せ札の数字とマーク、未停止のリールの抽選結果、回転中のルーレットの当選番号、コインの確定面、競馬の予定勝者は公開しません。勝敗・配当・抽選・支払い・途中終了時の精算はクライアントで決めません。
 
-## 検証用Mod
-
-通常の配布JARにテストドライバーは含まれません。隔離したテストワールドでのみ使用してください。
-
-```powershell
-./gradlew.bat :common:test :fabric:build :forge:build
-./gradlew.bat -PguiDebug :fabric:remapGuiDebugJar :forge:remapGuiDebugJar
-```
-
-`gui-debug` JARはテスト用プレイヤーをOPにし、`/guiqa setup`がテストワールド内の資産・出品を初期化します。本番環境には導入しないでください。クライアントを`-Dguildquests.guiQa=true`で起動すると、実際のGUIウィジェットとサーバー通信を使う操作テストが動き、`gui-results.txt`、`gui-status.txt`、`screenshots/`に結果を保存します。
-
-`-Dguildquests.guiQaServer=127.0.0.1:25579`でタイトル画面から通常の接続処理を開始できます。受取専用のクライアントは`-Dguildquests.guiQaControlOnly=true`を使用します。この場合、テスト資産を初期化するシナリオは実行しません。作業ディレクトリーの`gui-control.txt`に`command:コマンド`、`click:ボタン名`、`input:整数`、`shot:画像名`を書くと、次のクライアントtickで実行し、`gui-controls.txt`へ成功した操作を記録します。
-
-Forgeの自動接続がタイムアウトした場合は、マルチプレイの「ダイレクト接続」で参加してください。参加後に操作テストが始まります。
-
-Fabricの金額入力に絞った回帰テストは、`gui-debug` JARを導入し、`-Dguildquests.amountQa=true -Dguildquests.guiQaControlOnly=true -Dguildquests.guiQaServer=127.0.0.1:25579`でクライアントを起動します。`Gui`で始まる検証用プレイヤー名を使ってください。隔離したワールドの資産を初期化し、銀行のサービス統合、文字編集、範囲チェック、入出金、画面テンキー、取消、リサイズ、入札・出品・管理画面への金額反映を確認します。結果は`amount-results.txt`と`amount-status.txt`に保存します。クリップボード操作と物理テンキーは、別途キーボードで確認してください。
