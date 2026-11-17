@@ -1,9 +1,9 @@
-# サーバー自動更新（Fabric / Forge）
+# サーバー自動更新（Forge）
 
-Minecraft 1.20.1 / Java 17 の Fabric・Forge 専用サーバーに対応します。バージョンは **26.12.1** です。
+Minecraft 1.20.1 / Java 17 の Forge 専用サーバーに対応します。バージョンは **26.12.1** です。
 
-初回はサーバーを終了し、既存の GuildQuests JAR を使用中のローダー用の26.12.1 JARに置き換えます。
-クライアントも同じローダー・同じModバージョンに揃えてください。
+初回はサーバーを終了し、既存の GuildQuests JAR を 26.12.1 JAR に置き換えます。
+クライアントも同じModバージョンに揃えてください。
 
 ## 設定
 
@@ -40,7 +40,7 @@ Minecraft 1.20.1 / Java 17 の Fabric・Forge 専用サーバーに対応しま�
 ## 自動再起動を使う（Windows）
 
 `start-server.ps1` をサーバーフォルダーへ配置し、そのフォルダーから起動します。
-Fabricはサーバー起動JAR、Forgeはインストーラーが生成した `run.bat` と同じ場所です。
+Forgeはインストーラーが生成した `run.bat` と同じ場所です。
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1
@@ -50,7 +50,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader Forge
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader Fabric
 ```
 
 同じフォルダーに両方のローダーがある場合は `-Loader` を指定してください。

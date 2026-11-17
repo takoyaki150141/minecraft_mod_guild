@@ -1,4 +1,4 @@
-# Fabric / Forge 1.20.1 ボタンGUI
+# Forge 1.20.1 ボタンGUI
 
 ## 対象
 
@@ -27,7 +27,7 @@ main `214a33b5764f01dabc78d191853b5564c8fd0b93`を基準にしています。`fe
 
 `GuildGuiLayout`が現在のGUI座標系の幅・高さから列数、カード幅、表示行数とページ数を計算します。狭い画面は1列、広い画面は最大3列で、文字は省略表示とツールチップで確認できます。`isPauseScreen()`はfalse、背景はバニラの`renderBackground()`で毎フレーム暗転します。ワールドの画像を固定したり、ゲーム更新を止めたりしません。クエスト・残高・送金先などは約1秒ごとに更新し、ゲームのアニメーションは既存のサーバー更新を使用します。
 
-Fabric・Forgeともに同じ画面・サーバーハンドラーを使用します。ForgeではDeferredRegisterでMenuTypeを登録し、クライアント初期化時に画面を接続します。金額はForgeのSimpleChannelで送信します。Forgeの通信バージョンは4へ更新しており、サーバー・クライアント双方の更新が必要です。
+ForgeではDeferredRegisterでMenuTypeを登録し、クライアント初期化時に画面を接続します。金額はSimpleChannelで送信します。通信バージョンは4で、サーバー・クライアント双方の更新が必要です。
 
 Forgeではキー設定をMod構築時に登録し、ブロックの描画設定はコンテンツ登録後のFMLClientSetupEventで適用します。登録前にModBlocksを初期化してレジストリー凍結の例外が出るのを防ぎます。
 
@@ -57,8 +57,8 @@ Forgeではキー設定をMod構築時に登録し、ブロックの描画設定
 通常の配布JARにテストドライバーは含まれません。隔離したテストワールドでのみ使用してください。
 
 ```powershell
-./gradlew.bat :common:test :fabric:build :forge:build
-./gradlew.bat -PguiDebug :fabric:remapGuiDebugJar :forge:remapGuiDebugJar
+./gradlew.bat :common:test :forge:build
+./gradlew.bat -PguiDebug :forge:remapGuiDebugJar
 ```
 
 `gui-debug` JARはテスト用プレイヤーをOPにし、`/guiqa setup`がテストワールド内の資産・出品を初期化します。本番環境には導入しないでください。クライアントを`-Dguildquests.guiQa=true`で起動すると、実際のGUIウィジェットとサーバー通信を使う操作テストが動き、`gui-results.txt`、`gui-status.txt`、`screenshots/`に結果を保存します。
