@@ -140,13 +140,17 @@ public final class NeoForgeBackend implements Platform.Backend {
     @Override
     public Path getModJar() {
         Path path = ModList.get().getModFileById("guildquests").getFile().getFilePath();
-        return java.nio.file.Files.isRegularFile(path) ? path : null;
+        if (!java.nio.file.Files.isRegularFile(path)) return null;
+        // Never hand a modpack/JiJ host JAR to the updater; only replace our own release asset.
+        String name = path.getFileName().toString();
+        return name.matches("guildquests_.*-1\\.21\\.1_.*\\.jar") ? path : null;
     }
 
     @Override
     public void validateUpdateMetadata(java.util.zip.ZipFile jar, String version, boolean dedicatedServer) throws java.io.IOException {
         java.util.Map<String, String> installed = new java.util.HashMap<>();
         for (var mod : ModList.get().getMods()) installed.put(mod.getModId(), mod.getVersion().toString());
+        installed.put("fml", net.neoforged.fml.loading.FMLLoader.versionInfo().fmlVersion());
         installed.put("java", Integer.toString(Runtime.version().feature()));
         dev.guildquests.update.NeoForgeUpdateMetadata.validate(jar, version, dedicatedServer, installed);
     }

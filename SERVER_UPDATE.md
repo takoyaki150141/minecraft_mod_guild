@@ -52,11 +52,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader NeoForge
 ```
 
-NeoForge 1.21.1は `libraries/net/neoforged/forge/<バージョン>/win_args.txt` から起動し、`user_jvm_args.txt` も読み込みます。
+NeoForge 1.21.1は `libraries/net/neoforged/neoforge/<バージョン>/win_args.txt` から起動し、`user_jvm_args.txt` も読み込みます。
 複数のNeoForgeバージョンがある場合は使用する引数ファイルを指定します。
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader NeoForge -ForgeArgsFile "libraries/net/neoforged/forge/1.21.1-21.1.267/win_args.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader NeoForge -ForgeArgsFile "libraries/net/neoforged/neoforge/21.1.267/win_args.txt"
 ```
 
 メモリは `-MinMemory 1G -MaxMemory 4G`、Javaの実行ファイルは `-JavaPath "Javaのパス"` で変更できます。
@@ -74,7 +74,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start-server.ps1 -Loader N
 ```sh
 sh start-server.sh
 LOADER=neoforge sh start-server.sh
-FORGE_ARGS_FILE=libraries/net/neoforged/forge/1.21.1-21.1.267/unix_args.txt sh start-server.sh
+FORGE_ARGS_FILE=libraries/net/neoforged/neoforge/21.1.267/unix_args.txt sh start-server.sh
 ```
 
 `JAVA_PATH`、`MIN_MEMORY`、`MAX_MEMORY`、`SERVER_JAR` も環境変数で指定できます。

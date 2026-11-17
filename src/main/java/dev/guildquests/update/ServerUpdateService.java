@@ -86,7 +86,6 @@ public final class ServerUpdateService {
         Platform.onCommands((dispatcher, registry) -> dispatcher.register(Commands.literal("guildadmin")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("update")
-                        .requires(source -> source.getEntity() == null)
                         .executes(context -> {
                             context.getSource().sendSuccess(() -> Component.literal(status()), false);
                             return 1;

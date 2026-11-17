@@ -19,7 +19,7 @@ class NeoForgeUpdateMetadataTest {
     @TempDir Path temporary;
 
     private static final Map<String, String> INSTALLED =
-            Map.of("neoforge", "21.1.267", "minecraft", "1.21.1", "java", "21");
+            Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1", "java", "21");
 
     private static final String METADATA = """
             modLoader = "javafml"
@@ -96,14 +96,33 @@ class NeoForgeUpdateMetadataTest {
                 () -> validate(METADATA.replace("[1.21.1,1.21.2)", "[1.22,1.23)"), INSTALLED));
         assertThrows(IOException.class,
                 () -> validate(METADATA.replace("[21.1.0,)", "[21.2.0,)"), INSTALLED));
+        assertThrows(IOException.class,
+                () -> validate(METADATA.replace("[4,)", "[5,)"), INSTALLED));
+    }
+
+    @Test
+    void acceptsMissingVersionRangeAsAny() {
+        String metadata = METADATA.replace("            versionRange = \"[6.0.0,)\"\n", "");
+        assertDoesNotThrow(() -> validate(metadata,
+                Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1",
+                        "java", "21", "create", "6.0.10")));
+    }
+
+    @Test
+    void ignoresDiscouragedDependency() {
+        String metadata = METADATA.replace("type = \"optional\"", "type = \"discouraged\"");
+        assertDoesNotThrow(() -> validate(metadata, INSTALLED));
+        assertDoesNotThrow(() -> validate(metadata,
+                Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1",
+                        "java", "21", "create", "5.0.0")));
     }
 
     @Test
     void validatesOptionalDependencyWhenItIsInstalled() {
         assertDoesNotThrow(() -> validate(METADATA,
-                Map.of("neoforge", "21.1.267", "minecraft", "1.21.1", "java", "21", "create", "6.0.10")));
+                Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1", "java", "21", "create", "6.0.10")));
         assertThrows(IOException.class, () -> validate(METADATA,
-                Map.of("neoforge", "21.1.267", "minecraft", "1.21.1", "java", "21", "create", "5.0.0")));
+                Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1", "java", "21", "create", "5.0.0")));
     }
 
     @Test
@@ -126,7 +145,7 @@ class NeoForgeUpdateMetadataTest {
         String metadata = METADATA.replace("type = \"optional\"", "type = \"incompatible\"");
         assertDoesNotThrow(() -> validate(metadata, INSTALLED));
         assertThrows(IOException.class, () -> validate(metadata,
-                Map.of("neoforge", "21.1.267", "minecraft", "1.21.1", "java", "21", "create", "6.0.10")));
+                Map.of("neoforge", "21.1.267", "fml", "4.0.45", "minecraft", "1.21.1", "java", "21", "create", "6.0.10")));
     }
 
     @Test

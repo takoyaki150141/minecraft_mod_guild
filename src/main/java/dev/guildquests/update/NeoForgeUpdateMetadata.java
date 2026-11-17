@@ -26,7 +26,8 @@ public final class NeoForgeUpdateMetadata {
                 metadata = new TomlParser().parse(reader);
             }
             if (!"javafml".equals(metadata.get("modLoader"))) throw new IOException("Unsupported NeoForge Mod loader");
-            requireVersion("NeoForge loader", metadata.get("loaderVersion"), installed.get("neoforge"));
+            String fmlVersion = installed.containsKey("fml") ? installed.get("fml") : installed.get("neoforge");
+            requireVersion("NeoForge loader", metadata.get("loaderVersion"), fmlVersion);
             List<? extends UnmodifiableConfig> mods = metadata.get("mods");
             UnmodifiableConfig guild = null;
             if (mods != null) {
@@ -54,13 +55,18 @@ public final class NeoForgeUpdateMetadata {
                     if (!dedicatedServer && "SERVER".equals(side)) continue;
                     String modId = dependency.get("modId");
                     String type = dependency.get("type");
-                    boolean optional = "optional".equals(type);
-                    if (optional && !installed.containsKey(modId)) continue;
+                    if (type == null || type.isBlank()) type = "required";
                     if ("incompatible".equals(type)) {
                         if (installed.containsKey(modId)) throw new IOException("Incompatible Mod is installed: " + modId);
                         continue;
                     }
-                    requireVersion(modId, dependency.get("versionRange"), installed.get(modId));
+                    // "discouraged" is only a warning in NeoForge metadata; never block an update for it.
+                    if ("discouraged".equals(type)) continue;
+                    boolean optional = "optional".equals(type);
+                    if (optional && !installed.containsKey(modId)) continue;
+                    String range = dependency.get("versionRange");
+                    if (range == null || range.isBlank()) range = "*";
+                    requireVersion(modId, range, installed.get(modId));
                 }
             }
         } catch (IOException e) {
@@ -71,7 +77,8 @@ public final class NeoForgeUpdateMetadata {
     }
 
     private static void requireVersion(String name, String range, String installed) throws Exception {
-        if (range == null || installed == null) throw new IOException("Missing required " + name + " dependency");
+        if (installed == null) throw new IOException("Missing required " + name + " dependency");
+        if (range == null || range.isBlank() || "*".equals(range.trim())) return;
         VersionRange predicate = VersionRange.createFromVersionSpec(range);
         DefaultArtifactVersion available = new DefaultArtifactVersion(installed);
         boolean matches = predicate.hasRestrictions() ? predicate.containsVersion(available)

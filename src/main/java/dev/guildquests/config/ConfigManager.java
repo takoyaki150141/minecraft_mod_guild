@@ -157,6 +157,18 @@ public final class ConfigManager {
                 q.target = "minecraft:fortress";
                 GuildQuestsMod.LOGGER.info("Migrated quest {} structure target to minecraft:fortress", q.id);
             }
+            if ("minecraft:jungle_hills".equals(q.target)) {
+                // Removed from vanilla in 1.18; use the base biome on 1.21.1.
+                q.target = "minecraft:jungle";
+                GuildQuestsMod.LOGGER.info("Migrated quest {} biome target to minecraft:jungle", q.id);
+            }
+            if (q.biomes != null) {
+                for (int i = 0; i < q.biomes.length; i++) {
+                    if ("minecraft:jungle_hills".equals(q.biomes[i])) {
+                        q.biomes[i] = "minecraft:jungle";
+                    }
+                }
+            }
             q.amount = Math.max(1, q.amount);
             if (q.targets != null) {
                 List<String> cleaned = new ArrayList<>();
@@ -333,7 +345,7 @@ public final class ConfigManager {
                 "minecraft:savanna", "minecraft:desert", "minecraft:taiga", "minecraft:snowy_taiga",
                 "minecraft:swamp", "minecraft:dark_forest", "minecraft:flower_forest",
                 "minecraft:badlands", "minecraft:plains", "minecraft:forest", "minecraft:birch_forest",
-                "minecraft:beach", "minecraft:mushroom_fields", "minecraft:ice_spikes", "minecraft:jungle_hills"
+                "minecraft:beach", "minecraft:mushroom_fields", "minecraft:ice_spikes", "minecraft:jungle"
         };
         biome.y = 64;
         biome.radius = 32;
