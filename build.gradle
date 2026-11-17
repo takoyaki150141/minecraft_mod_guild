@@ -10,6 +10,11 @@ base {
     archivesName = "${project.archives_name}_neoforge-${project.minecraft_version}"
 }
 
+// Release asset name matches the other loaders: guildquests_neoforge-1.21.1_<version>.jar
+tasks.named('jar') {
+    archiveFileName = "${base.archivesName.get()}_${project.version}.jar"
+}
+
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(21) }
     withSourcesJar()
