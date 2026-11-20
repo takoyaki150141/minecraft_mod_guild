@@ -48,7 +48,9 @@ if ($Loader -eq 'Auto') {
 }
 $launchArguments = @()
 if ($Loader -ne 'Fabric') {
-    $candidates = if ($Loader -eq 'NeoForge') { $neoforgeFiles } else { $forgeFiles }
+    # @() keeps this an array: a bare if-expression unrolls single-element arrays,
+    # which would make $candidates.Count null and break the check below.
+    $candidates = @(if ($Loader -eq 'NeoForge') { $neoforgeFiles } else { $forgeFiles })
     if (-not $ForgeArgsFile) {
         if ($candidates.Count -ne 1) { throw "Select one installed $Loader version with -ForgeArgsFile libraries/.../win_args.txt." }
         $ForgeArgsFile = $candidates[0].Path
