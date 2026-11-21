@@ -32,6 +32,8 @@ public final class BossProgression {
 
         GuildPersistentState state = GuildPersistentState.get(server);
         // The overworld clock is the shared one; other dimensions keep their own static time.
+        // Minimal test servers may have no overworld at all.
+        if (server.overworld() == null) return;
         long day = server.overworld().getDayTime() / TICKS_PER_DAY;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerGuildData data = state.get(player.getUUID());

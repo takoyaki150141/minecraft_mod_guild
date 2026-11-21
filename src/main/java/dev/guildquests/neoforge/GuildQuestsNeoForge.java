@@ -19,6 +19,9 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.items.wrapper.SidedInvWrapper;
 import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
@@ -36,12 +39,23 @@ public final class GuildQuestsNeoForge {
         Platform.bind(backend);
         backend.registerNeoForgeEvents();
         modBus.addListener(this::handleRegister);
+        modBus.addListener(this::registerCapabilities);
         modBus.addListener(NeoForgeNetwork::register);
         GuildQuestsMod.init();
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
             NeoForgeClientBootstrap.init(modBus);
         }
+    }
+
+    /**
+     * Exposes the deposit block as an item handler. Vanilla hoppers reach it through the
+     * WorldlyContainer path, but capability-based transports (Create chutes/funnels, pipes)
+     * query Capabilities.ItemHandler.BLOCK, which mods must register themselves.
+     */
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlocks.GUILD_DEPOSIT_BE,
+                (be, side) -> new SidedInvWrapper(be, side));
     }
 
     /**

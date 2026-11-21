@@ -124,6 +124,11 @@ public final class GuildPersistentState extends SavedData {
     }
 
     public static GuildPersistentState get(MinecraftServer server) {
+        // Minimal test servers (fml-junit's ephemeral server) have no overworld; return an
+        // unpersisted state instead of crashing the ServerStarted handler.
+        if (server.overworld() == null) {
+            return new GuildPersistentState();
+        }
         return server.overworld().getDataStorage().computeIfAbsent(
                 new SavedData.Factory<>(GuildPersistentState::new, GuildPersistentState::fromNbt),
                 SAVE_ID

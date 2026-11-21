@@ -818,6 +818,8 @@ public final class GuildService {
 
     /** Current daily-board day index; changes once per 24000 ticks. */
     public static long boardDay(MinecraftServer server) {
+        // Minimal test servers have no overworld; keep day-based logic idle there.
+        if (server.overworld() == null) return 0;
         return Math.floorDiv(server.overworld().getDayTime(), 24000L);
     }
 
@@ -894,6 +896,7 @@ public final class GuildService {
 
     /** Ticks until the next daily draw. */
     public static long ticksUntilNextDraw(MinecraftServer server) {
+        if (server.overworld() == null) return 24000L;
         return 24000L - Math.floorMod(server.overworld().getDayTime(), 24000L);
     }
 
