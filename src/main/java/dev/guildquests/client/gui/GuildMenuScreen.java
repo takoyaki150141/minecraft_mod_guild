@@ -314,7 +314,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // Exactly the in-world dimming used by vanilla menus; never cache or replace the world frame.
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        renderTransparentBackground(graphics);
         graphics.drawString(font, fit(title.getString(), layout.width()), layout.left(), layout.titleY(), 0xFFFFFF);
         if (height >= 220) {
             String subtitle = headerText != null ? headerText

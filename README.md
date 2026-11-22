@@ -100,13 +100,13 @@ Minecraft 1.21.1 の NeoForge 向けに、クエスト、ギルド通貨、銀�
 生成物:
 
 ```text
-build/libs/guildquests_neoforge-1.21.1_26.17.4.jar
+build/libs/guildquests_neoforge-1.21.1_26.17.5.jar
 ```
 
 ## 導入
 
 1. NeoForge で Minecraft 1.21.1 を用意します。
-2. 26.17.4 の JAR を `mods/` へ配置します。ワールドと設定を保存し、古い GuildQuests の JAR は重複させず置き換えます。
+2. 26.17.5 の JAR を `mods/` へ配置します。ワールドと設定を保存し、古い GuildQuests の JAR は重複させず置き換えます。
 3. 一度起動すると `config/guildquests/` が作成されます。
 4. 設定を変更したら、サーバーを再起動するか `/guildadmin reload` を実行します。
 

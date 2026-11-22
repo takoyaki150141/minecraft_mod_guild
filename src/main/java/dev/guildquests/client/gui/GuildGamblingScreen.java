@@ -162,7 +162,7 @@ public final class GuildGamblingScreen extends GuildMenuScreen {
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g, mouseX, mouseY, partialTick);
+        renderTransparentBackground(g);
         g.drawString(font, title, layout.left(), layout.titleY(), 0xFFEAE1C6);
         String phase = view.getString("phase");
         String status = switch (phase) {

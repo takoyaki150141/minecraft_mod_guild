@@ -58,7 +58,10 @@ public class UpdateScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
-        this.renderBackground(g, mouseX, mouseY, 0f);
+        // 1.21's renderBackground blurs the backdrop into frosted glass; draw the standard
+        // title panorama plus a plain translucent tint instead, like the 1.20.1 build did.
+        this.renderPanorama(g, delta);
+        this.renderTransparentBackground(g);
         int cx = this.width / 2;
         int cy = this.height / 2;
 
