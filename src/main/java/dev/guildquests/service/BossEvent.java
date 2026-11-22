@@ -180,6 +180,7 @@ public final class BossEvent {
         // Rescue bosses that end up in lava, the void, walled in, or stuck.
         for (BossInstance instance : new ArrayList<>(bosses.values())) {
             releaseProtectedTarget(instance);
+            stripConcealment(instance.entity);
             rescue(instance);
             BossRanged.tick(instance.entity, instance.tier, instance.power);
         }
@@ -778,6 +779,20 @@ public final class BossEvent {
                     viewers.remove();
                 }
             }
+        }
+    }
+
+    /**
+     * Emergency bosses must never be hidden: an invisibility splash potion or tipped arrow
+     * (or another mod's concealment) would otherwise leave the event running against a
+     * model nobody can see. Cheap enough to run every tick for every live boss.
+     */
+    private static void stripConcealment(LivingEntity entity) {
+        if (entity.getEffect(MobEffects.INVISIBILITY) != null) {
+            entity.removeEffect(MobEffects.INVISIBILITY);
+        }
+        if (entity.isInvisible()) {
+            entity.setInvisible(false);
         }
     }
 
