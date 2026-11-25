@@ -17,6 +17,7 @@ import dev.guildquests.service.BossProgression;
 import dev.guildquests.service.BossProtection;
 import dev.guildquests.service.BossTier;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.service.LandService;
 import dev.guildquests.util.Numbers;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -31,7 +32,7 @@ import java.util.List;
 
 public final class GuildQuestsMod {
     public static final String MOD_ID = "guildquests";
-    public static final String VERSION = "26.17.5";
+    public static final String VERSION = "26.18.0";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static int exploreTicker = 0;
     private static int riboTicker = 0;
@@ -86,6 +87,9 @@ public final class GuildQuestsMod {
 
         // Mining-based loan repayment (only while a consumer-finance loan is owed).
         Platform.onBlockBreak(GuildService::onBlockBreak);
+        Platform.onCanBreak(LandService::allowBreak);
+        Platform.onCanPlace(LandService::allowPlace);
+        Platform.onCanUse(LandService::allowUse);
 
         Platform.onServerTick(server -> {
             GuildService.ensureDailyBoard(server);

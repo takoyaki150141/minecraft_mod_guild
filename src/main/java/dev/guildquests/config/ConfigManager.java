@@ -127,6 +127,10 @@ public final class ConfigManager {
         c.auctionDurationMinutes = Math.max(1, Math.min(10080, c.auctionDurationMinutes));
         c.auctionMaxListingsPerPlayer = Math.max(1, Math.min(45, c.auctionMaxListingsPerPlayer));
         c.auctionBidStep = Math.max(1, c.auctionBidStep);
+        c.landBasePrice = Math.max(0, Math.min(1_000_000_000L, c.landBasePrice));
+        c.landPriceStep = Math.max(0, Math.min(1_000_000_000L, c.landPriceStep));
+        c.landMaxChunks = Math.max(0, Math.min(1_000_000, c.landMaxChunks));
+        c.landMapRadius = Math.max(1, Math.min(8, c.landMapRadius));
         if (c.rankThresholds == null || c.rankThresholds.isEmpty()) c.rankThresholds = new ModConfig().rankThresholds;
         c.consumerLoanInterestPercent = Math.max(0, Math.min(100, c.consumerLoanInterestPercent));
         c.consumerLoanIntervalMinutes = Math.max(1, c.consumerLoanIntervalMinutes);

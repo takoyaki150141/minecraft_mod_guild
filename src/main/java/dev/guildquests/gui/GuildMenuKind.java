@@ -16,7 +16,7 @@ public enum GuildMenuKind {
     AUCTION_BROWSE(6, "出品一覧", "入札額", "出品・受取・案内"),
     AUCTION_SELL(3, "出品内容"),
     AUCTION_MINE(6, "自分の出品", "受取ボックス", "案内・一括受取"),
-    ADMIN(6, "管理"), DEPOSIT_SETTINGS(1, "入金ブロック設定");
+    ADMIN(6, "管理"), DEPOSIT_SETTINGS(1, "入金ブロック設定"), LAND(6, "土地");
 
     public final int rows;
     public final List<String> sections;

@@ -107,6 +107,21 @@ public final class Platform {
         b().onBlockBreak(handler);
     }
 
+    /** Return false to cancel the break before it happens (land protection). */
+    public static void onCanBreak(BlockPermissionHandler handler) {
+        b().onCanBreak(handler);
+    }
+
+    /** Return false to cancel the placement before it happens (land protection). */
+    public static void onCanPlace(BlockPermissionHandler handler) {
+        b().onCanPlace(handler);
+    }
+
+    /** Return false to cancel a right-click block interaction (land protection). */
+    public static void onCanUse(BlockUsePermissionHandler handler) {
+        b().onCanUse(handler);
+    }
+
     public static boolean canSend(ServerPlayer player, ResourceLocation channel) {
         return b().canSend(player, channel);
     }
@@ -128,6 +143,16 @@ public final class Platform {
     @FunctionalInterface
     public interface BlockBreakHandler {
         void accept(ServerPlayer player, BlockState state);
+    }
+
+    @FunctionalInterface
+    public interface BlockPermissionHandler {
+        boolean allow(ServerPlayer player, net.minecraft.core.BlockPos pos, BlockState state);
+    }
+
+    @FunctionalInterface
+    public interface BlockUsePermissionHandler {
+        boolean allow(ServerPlayer player, net.minecraft.core.BlockPos pos);
     }
 
     public interface Backend {
@@ -162,6 +187,12 @@ public final class Platform {
         void onEntityDeath(BiConsumer<LivingEntity, DamageSource> handler);
 
         void onBlockBreak(BlockBreakHandler handler);
+
+        void onCanBreak(BlockPermissionHandler handler);
+
+        void onCanPlace(BlockPermissionHandler handler);
+
+        void onCanUse(BlockUsePermissionHandler handler);
 
         boolean canSend(ServerPlayer player, ResourceLocation channel);
 

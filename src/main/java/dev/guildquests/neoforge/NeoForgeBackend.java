@@ -46,6 +46,9 @@ public final class NeoForgeBackend implements Platform.Backend {
     private final List<BiConsumer<ServerPlayer, LivingEntity>> playerKill = new ArrayList<>();
     private final List<BiConsumer<LivingEntity, DamageSource>> entityDeath = new ArrayList<>();
     private final List<Platform.BlockBreakHandler> blockBreak = new ArrayList<>();
+    private final List<Platform.BlockPermissionHandler> canBreak = new ArrayList<>();
+    private final List<Platform.BlockPermissionHandler> canPlace = new ArrayList<>();
+    private final List<Platform.BlockUsePermissionHandler> canUse = new ArrayList<>();
 
     /** Wire the stored handlers up to the NeoForge event bus. Safe to call once at construction. */
     public void registerNeoForgeEvents() {
@@ -57,12 +60,41 @@ public final class NeoForgeBackend implements Platform.Backend {
         NeoForge.EVENT_BUS.addListener(this::handleLivingAttack);
         NeoForge.EVENT_BUS.addListener(this::handleLivingDeath);
         NeoForge.EVENT_BUS.addListener(this::handleBlockBreak);
+        NeoForge.EVENT_BUS.addListener(this::handleBlockPlace);
+        NeoForge.EVENT_BUS.addListener(this::handleBlockUse);
     }
 
     private void handleBlockBreak(BlockEvent.BreakEvent event) {
         if (event.getPlayer() instanceof ServerPlayer player) {
+            for (Platform.BlockPermissionHandler handler : canBreak) {
+                if (!handler.allow(player, event.getPos(), event.getState())) {
+                    event.setCanceled(true);
+                    return;
+                }
+            }
             for (Platform.BlockBreakHandler handler : blockBreak) {
                 handler.accept(player, event.getState());
+            }
+        }
+    }
+
+    private void handleBlockPlace(BlockEvent.EntityPlaceEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        for (Platform.BlockPermissionHandler handler : canPlace) {
+            if (!handler.allow(player, event.getPos(), event.getPlacedBlock())) {
+                event.setCanceled(true);
+                return;
+            }
+        }
+    }
+
+    private void handleBlockUse(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        for (Platform.BlockUsePermissionHandler handler : canUse) {
+            if (!handler.allow(player, event.getPos())) {
+                event.setCanceled(true);
+                event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
+                return;
             }
         }
     }
@@ -203,6 +235,21 @@ public final class NeoForgeBackend implements Platform.Backend {
     @Override
     public void onBlockBreak(Platform.BlockBreakHandler handler) {
         blockBreak.add(handler);
+    }
+
+    @Override
+    public void onCanBreak(Platform.BlockPermissionHandler handler) {
+        canBreak.add(handler);
+    }
+
+    @Override
+    public void onCanPlace(Platform.BlockPermissionHandler handler) {
+        canPlace.add(handler);
+    }
+
+    @Override
+    public void onCanUse(Platform.BlockUsePermissionHandler handler) {
+        canUse.add(handler);
     }
 
     @Override

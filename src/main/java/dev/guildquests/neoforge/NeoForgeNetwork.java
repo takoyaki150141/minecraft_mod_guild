@@ -1,6 +1,7 @@
 package dev.guildquests.neoforge;
 
 import dev.guildquests.gui.GuildMenu;
+import dev.guildquests.service.LandService;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -17,7 +18,7 @@ import java.util.function.Consumer;
  * The single NeoForge play channel, shared by guild, boss pin and GUI packets.
  */
 public final class NeoForgeNetwork {
-    public static final String PROTOCOL = "4";
+    public static final String PROTOCOL = "5";
 
     private static Consumer<ServerPlayer> openGuildHandler;
     private static BossPinSink bossPinSink;
@@ -31,6 +32,7 @@ public final class NeoForgeNetwork {
         registrar.playToServer(OpenGuildC2S.TYPE, OpenGuildC2S.STREAM_CODEC, NeoForgeNetwork::handleOpenGuild);
         registrar.playToClient(BossPinS2C.TYPE, BossPinS2C.STREAM_CODEC, NeoForgeNetwork::handleBossPin);
         registrar.playToServer(GuiAmountC2S.TYPE, GuiAmountC2S.STREAM_CODEC, NeoForgeNetwork::handleGuiAmount);
+        registrar.playToServer(BuyLandC2S.TYPE, BuyLandC2S.STREAM_CODEC, NeoForgeNetwork::handleBuyLand);
     }
 
     private static void handleOpenGuild(OpenGuildC2S payload, IPayloadContext context) {
@@ -75,6 +77,34 @@ public final class NeoForgeNetwork {
 
     public static void sendGuiAmount(int containerId, long amount) {
         PacketDistributor.sendToServer(new GuiAmountC2S(containerId, amount));
+    }
+
+    private static void handleBuyLand(BuyLandC2S payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                LandService.buy(player, payload.chunkX(), payload.chunkZ());
+            }
+        });
+    }
+
+    /** C2S: buy one chunk from the land map. */
+    public static void sendBuyLand(int chunkX, int chunkZ) {
+        PacketDistributor.sendToServer(new BuyLandC2S(chunkX, chunkZ));
+    }
+
+    public record BuyLandC2S(int chunkX, int chunkZ) implements CustomPacketPayload {
+        public static final Type<BuyLandC2S> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("guildquests", "buy_land"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, BuyLandC2S> STREAM_CODEC =
+                StreamCodec.composite(
+                        ByteBufCodecs.VAR_INT, BuyLandC2S::chunkX,
+                        ByteBufCodecs.VAR_INT, BuyLandC2S::chunkZ,
+                        BuyLandC2S::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
     }
 
     public record GuiAmountC2S(int containerId, long amount) implements CustomPacketPayload {

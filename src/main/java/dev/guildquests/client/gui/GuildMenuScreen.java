@@ -61,6 +61,7 @@ public class GuildMenuScreen extends Screen implements MenuAccess<GuildClientMen
         return switch (menu.kind) {
             case BLACKJACK, CHINCHIRORIN, SLOT, ROULETTE, COIN_FLIP, HORSE_RACE ->
                     new GuildGamblingScreen(menu, inventory, title);
+            case LAND -> new LandMapScreen(menu, inventory, title);
             default -> new GuildMenuScreen(menu, inventory, title);
         };
     }

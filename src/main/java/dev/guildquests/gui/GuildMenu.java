@@ -22,7 +22,8 @@ public abstract class GuildMenu extends AbstractContainerMenu {
         // Keep quest progress, balances and player availability current while the world runs.
         if (kind == GuildMenuKind.GUILD || kind == GuildMenuKind.BANK || kind == GuildMenuKind.TRANSFER
                 || kind == GuildMenuKind.LOAN || kind == GuildMenuKind.AUCTION_BROWSE
-                || kind == GuildMenuKind.AUCTION_MINE || kind == GuildMenuKind.DEPOSIT_SETTINGS) {
+                || kind == GuildMenuKind.AUCTION_MINE || kind == GuildMenuKind.DEPOSIT_SETTINGS
+                || kind == GuildMenuKind.LAND) {
             if (!slots.isEmpty() && slots.get(0).container instanceof net.minecraft.world.SimpleContainer) {
                 long now = System.currentTimeMillis();
                 if (now >= nextRefresh) { nextRefresh = now + 1000; populate(); }

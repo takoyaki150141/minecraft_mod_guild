@@ -37,6 +37,11 @@
   "auctionDurationMinutes": 60,
   "auctionMaxListingsPerPlayer": 5,
   "auctionBidStep": 1,
+  "landProtectionEnabled": true,
+  "landBasePrice": 1000,
+  "landPriceStep": 250,
+  "landMaxChunks": 0,
+  "landMapRadius": 4,
   "rankThresholds": {
     "E": 0,
     "D": 5,

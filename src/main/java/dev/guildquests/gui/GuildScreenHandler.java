@@ -160,6 +160,11 @@ public final class GuildScreenHandler extends GuildMenu {
                 "出品・購入・入札ができます",
                 "固定価格 / 入札式を選択可能"),
                 (p, b, t) -> AuctionBrowseScreenHandler.open(p));
+        setAction(50, item(Items.FILLED_MAP, "土地保護",
+                "クリックで土地購入マップを開きます",
+                "自分の周囲のチャンクを購入して保護",
+                "購入するほど次の価格が上がります"),
+                (p, b, t) -> { if (b == 0) LandScreenHandler.open(p); });
 
         for (int i = 0; i < Math.min(MAX_DAILY_SLOTS, board.size()); i++) {
             DailyQuest daily = board.get(i);

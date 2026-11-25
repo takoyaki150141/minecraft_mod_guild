@@ -9,6 +9,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +28,8 @@ public final class GuildPersistentState extends SavedData {
     public final List<AuctionListing> auctions = new ArrayList<>();
     /** Listings whose item tag could not be decoded; kept verbatim for recovery. */
     public final List<CompoundTag> unreadableAuctions = new ArrayList<>();
+    /** Purchased land, keyed by "dimension|chunkX|chunkZ" to the owner UUID. */
+    public final Map<String, UUID> landOwners = new LinkedHashMap<>();
     /** Next auction listing id to hand out. */
     public long nextAuctionId = 1;
 
@@ -77,6 +80,22 @@ public final class GuildPersistentState extends SavedData {
             unreadableNbt.add(raw.copy());
         }
         nbt.put("UnreadableAuctions", unreadableNbt);
+        ListTag landNbt = new ListTag();
+        for (Map.Entry<String, UUID> entry : landOwners.entrySet()) {
+            String[] parts = entry.getKey().split("\\|");
+            if (parts.length != 3) continue;
+            try {
+                CompoundTag land = new CompoundTag();
+                land.putString("Dim", parts[0]);
+                land.putInt("X", Integer.parseInt(parts[1]));
+                land.putInt("Z", Integer.parseInt(parts[2]));
+                land.putUUID("Owner", entry.getValue());
+                landNbt.add(land);
+            } catch (RuntimeException ignored) {
+                // Malformed key: skip rather than preventing the world from loading.
+            }
+        }
+        nbt.put("LandOwners", landNbt);
         nbt.putLong("NextAuctionId", Math.max(1, nextAuctionId));
         return nbt;
     }
@@ -118,6 +137,14 @@ public final class GuildPersistentState extends SavedData {
         ListTag unreadableNbt = nbt.getList("UnreadableAuctions", Tag.TAG_COMPOUND);
         for (int i = 0; i < unreadableNbt.size(); i++) {
             state.unreadableAuctions.add(unreadableNbt.getCompound(i).copy());
+        }
+        ListTag landNbt = nbt.getList("LandOwners", Tag.TAG_COMPOUND);
+        for (int i = 0; i < landNbt.size(); i++) {
+            CompoundTag land = landNbt.getCompound(i);
+            if (!land.contains("Dim", Tag.TAG_STRING) || !land.contains("X", Tag.TAG_INT)
+                    || !land.contains("Z", Tag.TAG_INT) || !land.contains("Owner")) continue;
+            state.landOwners.put(land.getString("Dim") + "|" + land.getInt("X") + "|" + land.getInt("Z"),
+                    land.getUUID("Owner"));
         }
         state.nextAuctionId = Math.max(1, nbt.getLong("NextAuctionId"));
         return state;

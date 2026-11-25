@@ -115,6 +115,21 @@ public final class ModConfig {
     /** Rank name -> required total completions. Insertion order is used for display. */
     public Map<String, Integer> rankThresholds = new LinkedHashMap<>();
 
+    /** Land protection: purchased chunks are protected from other players. */
+    public boolean landProtectionEnabled = true;
+
+    /** Price of the first chunk a player buys. */
+    public long landBasePrice = 1000;
+
+    /** Added to the price for every chunk the buyer already owns. */
+    public long landPriceStep = 250;
+
+    /** Maximum chunks per player; 0 means unlimited. */
+    public int landMaxChunks = 0;
+
+    /** Chunk radius drawn around the player on the purchase map (1-8). */
+    public int landMapRadius = 4;
+
     public ModConfig() {
         rankThresholds.put("E", 0);
         rankThresholds.put("D", 5);
