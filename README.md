@@ -199,6 +199,15 @@ config/guildquests/server-update.json  # NeoForge 専用サーバー
 - `rankThresholds`: ランク名と累計達成数の閾値
 - `createIntegrationEnabled`: Create 連携の ON/OFF
 - `landProtectionEnabled`: 土地保護の ON/OFF（既定 `true`。OP Lv2 以上は保護を無視できます）
+- 以下の `landProtect...` は**初期値**です。プレイヤーは土地マップの「保護設定」から自分の土地の項目を個別に切り替えられ、その設定はプレイヤーごとに保存されます
+- `landProtectBreak`: 他のプレイヤーによるブロック破壊を禁止（既定 `true`）
+- `landProtectPlace`: ブロックの設置を禁止（既定 `true`）
+- `landProtectContainers`: チェスト・かまど・ホッパー・シュルカーボックスなどの開閉を禁止（既定 `true`）
+- `landProtectInteract`: ボタン・レバー・ドア・ベッドなどの右クリック操作を禁止（既定 `true`）
+- `landProtectEntity`: 動物・村人・防具立て・額縁などの使用を禁止（既定 `true`）
+- `landProtectMobDamage`: 動物・モンスターへの攻撃を禁止（既定 `true`）
+- `landProtectPvp`: 他のプレイヤーへの攻撃（PvP）を禁止（既定 `false`）
+- `landProtectEntry`: 他のプレイヤーがチャンクへ侵入することを禁止（既定 `false`）
 - `landBasePrice`: 最初のチャンクの価格（既定 1000 GC）
 - `landPriceStep`: 1チャンク所有するごとに加算される価格（既定 250 GC）
 - `landMaxChunks`: 1人あたりの所有上限（既定 0 = 無制限）

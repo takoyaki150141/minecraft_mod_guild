@@ -4,7 +4,9 @@ import dev.guildquests.config.ConfigManager;
 import dev.guildquests.config.ModConfig;
 import dev.guildquests.data.GuildPersistentState;
 import dev.guildquests.service.GuildService;
+import dev.guildquests.service.LandRules;
 import dev.guildquests.service.LandService;
+import dev.guildquests.service.LandTerrain;
 import dev.guildquests.util.Numbers;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
@@ -28,8 +30,16 @@ import java.util.UUID;
  */
 public final class LandScreenHandler extends GuildMenu {
     private static final int DISPLAY_SLOTS = 54;
+    /** Menu button ids 100..107 flip the protection switches on the rules screen. */
+    public static final int RULE_BUTTON_BASE = 100;
+    /** Terrain is re-sampled only occasionally; blocks rarely change while the map is open. */
+    private static final long TERRAIN_REFRESH_MILLIS = 3000;
     private final SimpleContainer display = new SimpleContainer(DISPLAY_SLOTS);
     private final ServerPlayer owner;
+    private int[] terrain;
+    private long terrainCenter = Long.MIN_VALUE;
+    private int terrainRadius = -1;
+    private long terrainSampledAt;
 
     public LandScreenHandler(int syncId, Container playerInventory, ServerPlayer owner) {
         super(GuildMenuKind.LAND, syncId);
@@ -106,7 +116,10 @@ public final class LandScreenHandler extends GuildMenu {
         view.putLong("price", LandService.price(config, owned));
         view.putInt("max", config.landMaxChunks);
         view.putBoolean("protection", config.landProtectionEnabled);
+        view.putInt("ruleMask", LandService.ownRules(owner));
+        view.putString("rules", LandService.rulesSummary(owner));
         view.putByteArray("cells", cells);
+        view.putIntArray("terrain", terrain(center, radius, side));
         view.put("owners", owners);
 
         display.setItem(0, GuildItems.item(Items.FILLED_MAP, "土地マップ",
@@ -121,7 +134,40 @@ public final class LandScreenHandler extends GuildMenu {
         return name == null || name.isBlank() ? "他のプレイヤー" : name;
     }
 
+    /** Cached surface colours for the current centre chunk and radius. */
+    private int[] terrain(ChunkPos center, int radius, int side) {
+        long centerKey = ChunkPos.asLong(center.x, center.z);
+        long now = System.currentTimeMillis();
+        if (terrain == null || terrain.length != side * side || terrainCenter != centerKey
+                || terrainRadius != radius || now - terrainSampledAt >= TERRAIN_REFRESH_MILLIS) {
+            if (owner.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                terrain = LandTerrain.sample(serverLevel, center, radius);
+            } else {
+                terrain = new int[side * side];
+            }
+            terrainCenter = centerKey;
+            terrainRadius = radius;
+            terrainSampledAt = now;
+        }
+        return terrain;
+    }
+
     @Override public boolean stillValid(Player player) { return player == owner && !owner.isRemoved(); }
+
+    /** Menu buttons: 0 = back to the quest menu, 100+index = toggle that protection switch. */
+    @Override public boolean clickMenuButton(Player player, int button) {
+        if (!(player instanceof ServerPlayer serverPlayer) || serverPlayer.containerMenu != this
+                || !stillValid(player)) return false;
+        if (button == 0) {
+            GuildScreenHandler.openQuests(serverPlayer);
+            return true;
+        }
+        LandRules.Rule rule = LandRules.byIndex(button - RULE_BUTTON_BASE);
+        if (rule == null || !LandService.toggleRule(serverPlayer, rule.bit())) return false;
+        populate();
+        broadcastChanges();
+        return true;
+    }
 
     @Override public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
         if (slotIndex >= 0 && slotIndex < DISPLAY_SLOTS) return;

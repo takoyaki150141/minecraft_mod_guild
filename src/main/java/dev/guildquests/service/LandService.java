@@ -3,16 +3,24 @@ package dev.guildquests.service;
 import dev.guildquests.config.ConfigManager;
 import dev.guildquests.config.ModConfig;
 import dev.guildquests.data.GuildPersistentState;
+import dev.guildquests.data.PlayerGuildData;
 import dev.guildquests.gui.LandScreenHandler;
 import dev.guildquests.util.Numbers;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +33,11 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class LandService {
     private static final Map<UUID, Long> LAST_DENIED_AT = new ConcurrentHashMap<>();
+    /** Last position a player was allowed to occupy, used to push back entries. */
+    private static final Map<UUID, LastPosition> LAST_POSITION = new ConcurrentHashMap<>();
+
+    private record LastPosition(String dimension, int chunkX, int chunkZ,
+                                double x, double y, double z) { }
 
     private LandService() { }
 
@@ -114,38 +127,148 @@ public final class LandService {
     // Protection
     // ------------------------------------------------------------------
 
+    /** Blocks from being broken, if the owner protects breaking. */
     public static boolean allowBreak(ServerPlayer player, BlockPos pos, BlockState state) {
-        return allowModify(player, pos);
+        return allow(player, player == null ? null : player.level(), pos, LandRules.BREAK, "破壊");
     }
 
+    /** Blocks from being placed. */
     public static boolean allowPlace(ServerPlayer player, BlockPos pos, BlockState state) {
-        return allowModify(player, pos);
+        return allow(player, player == null ? null : player.level(), pos, LandRules.PLACE, "設置");
     }
 
+    /** Containers and interactive blocks, split into two independent rules. */
     public static boolean allowUse(ServerPlayer player, BlockPos pos) {
-        return allowModify(player, pos);
+        if (player == null || pos == null) return true;
+        boolean container = isContainer(player.level(), pos);
+        return allow(player, player.level(), pos,
+                container ? LandRules.CONTAINERS : LandRules.INTERACT,
+                container ? "コンテナの開閉" : "ブロックの操作");
     }
 
-    private static boolean allowModify(ServerPlayer player, BlockPos pos) {
-        if (player == null || pos == null) return true;
+    /** Animals, villagers, item frames and armour stands. */
+    public static boolean allowEntityUse(ServerPlayer player, Entity target) {
+        if (player == null || target == null) return true;
+        return allow(player, target.level(), target.blockPosition(), LandRules.ENTITY, "生物の操作");
+    }
+
+    /** Incoming damage hook: PvP and mob damage inside another player's land. */
+    public static boolean allowDamage(LivingEntity victim, DamageSource source, float amount) {
+        if (victim == null || source == null) return true;
+        if (!(source.getEntity() instanceof ServerPlayer attacker)) return true;
+        boolean pvp = victim instanceof Player;
+        return allow(attacker, victim.level(), victim.blockPosition(),
+                pvp ? LandRules.PVP : LandRules.MOB_DAMAGE, pvp ? "PvP" : "生物への攻撃");
+    }
+
+    /**
+     * Pushes a player back when they walk into someone else's land.
+     * Only crossings are blocked: a player already inside keeps control and can walk out.
+     */
+    public static void onPlayerTick(ServerPlayer player) {
+        if (player == null || !(player.level() instanceof ServerLevel level)) return;
+        UUID id = player.getUUID();
+        String dimension = level.dimension().location().toString();
+        int chunkX = player.getBlockX() >> 4;
+        int chunkZ = player.getBlockZ() >> 4;
+        LastPosition last = LAST_POSITION.get(id);
+        if (last == null || !last.dimension().equals(dimension)) {
+            remember(player, dimension, chunkX, chunkZ);
+            return;
+        }
+        if (last.chunkX() == chunkX && last.chunkZ() == chunkZ) {
+            remember(player, dimension, chunkX, chunkZ);
+            return;
+        }
+
+        UUID owner = blockingOwner(player, level, new BlockPos(chunkX << 4, player.getBlockY(), chunkZ << 4));
+        if (owner != null && hasRule(player, owner, LandRules.ENTRY)) {
+            player.teleportTo(level, last.x(), last.y(), last.z(), player.getYRot(), player.getXRot());
+            player.setDeltaMovement(Vec3.ZERO);
+            deny(player, owner, "侵入");
+            LAST_POSITION.put(id, last);
+            return;
+        }
+        remember(player, dimension, chunkX, chunkZ);
+    }
+
+    /** Flips one switch for the player's own land and saves it. */
+    public static boolean toggleRule(ServerPlayer player, int bit) {
+        if (player == null || player.getServer() == null) return false;
+        GuildPersistentState state = GuildPersistentState.get(player.getServer());
+        PlayerGuildData data = state.get(player.getUUID());
+        data.landRuleMask = LandRules.toggle(effectiveRules(state, player.getUUID()), bit);
+        state.setDirty();
+        return true;
+    }
+
+    /** The player's own rules, already merged with the config defaults. */
+    public static int ownRules(ServerPlayer player) {
+        if (player == null || player.getServer() == null) return LandRules.defaults(ConfigManager.config());
+        GuildPersistentState state = GuildPersistentState.get(player.getServer());
+        return effectiveRules(state, player.getUUID());
+    }
+
+    /** Footer text for the map screen. */
+    public static String rulesSummary(ServerPlayer player) {
         ModConfig config = ConfigManager.config();
-        if (!config.landProtectionEnabled) return true;
-        if (player.hasPermissions(2)) return true;
+        if (!config.landProtectionEnabled) return "保護: 無効（サーバー設定）";
+        return "自分の保護: " + LandRules.names(ownRules(player));
+    }
+
+    private static void remember(ServerPlayer player, String dimension, int chunkX, int chunkZ) {
+        LAST_POSITION.put(player.getUUID(), new LastPosition(dimension, chunkX, chunkZ,
+                player.getX(), player.getY(), player.getZ()));
+    }
+
+    private static boolean allow(ServerPlayer player, Level level, BlockPos pos, int rule, String action) {
+        if (player == null || level == null || pos == null) return true;
+        UUID owner = blockingOwner(player, level, pos);
+        if (owner == null) return true;
+        if (!hasRule(player, owner, rule)) return true;
+        deny(player, owner, action);
+        return false;
+    }
+
+    /** True when the land owner protects this kind of action. */
+    private static boolean hasRule(ServerPlayer player, UUID owner, int rule) {
+        GuildPersistentState state = player.getServer() == null
+                ? null : GuildPersistentState.get(player.getServer());
+        if (state == null) return false;
+        return LandRules.has(effectiveRules(state, owner), rule);
+    }
+
+    private static int effectiveRules(GuildPersistentState state, UUID owner) {
+        return LandRules.resolve(state.get(owner).landRuleMask, ConfigManager.config());
+    }
+
+    private static UUID blockingOwner(ServerPlayer player, Level level, BlockPos pos) {
+        ModConfig config = ConfigManager.config();
+        if (!config.landProtectionEnabled) return null;
+        if (player.hasPermissions(2)) return null;
         MinecraftServer server = player.getServer();
-        if (server == null) return true;
-
+        if (server == null) return null;
         GuildPersistentState state = GuildPersistentState.get(server);
-        UUID owner = state.landOwners.get(key(player.level(), pos.getX() >> 4, pos.getZ() >> 4));
-        if (owner == null || owner.equals(player.getUUID())) return true;
+        UUID owner = state.landOwners.get(key(level, pos.getX() >> 4, pos.getZ() >> 4));
+        if (owner == null || owner.equals(player.getUUID())) return null;
+        return owner;
+    }
 
+    private static boolean isContainer(Level level, BlockPos pos) {
+        if (level == null || pos == null) return false;
+        if (level.getBlockEntity(pos) instanceof Container) return true;
+        return level.getBlockState(pos).getMenuProvider(level, pos) != null;
+    }
+
+    private static void deny(ServerPlayer player, UUID owner, String action) {
         long now = System.currentTimeMillis();
         Long last = LAST_DENIED_AT.get(player.getUUID());
-        if (last == null || now - last >= 1000) {
-            LAST_DENIED_AT.put(player.getUUID(), now);
-            player.displayClientMessage(Component.literal("このチャンクは " + ownerName(state, owner)
-                    + " が所有しています").withStyle(ChatFormatting.RED), true);
-        }
-        return false;
+        if (last != null && now - last < 1000) return;
+        LAST_DENIED_AT.put(player.getUUID(), now);
+        MinecraftServer server = player.getServer();
+        String name = server == null ? "他のプレイヤー" : ownerName(GuildPersistentState.get(server), owner);
+        player.displayClientMessage(Component.literal("このチャンクは " + name + " が所有しています（"
+                + action + "は禁止）").withStyle(ChatFormatting.RED), true);
     }
 
     private static String ownerName(GuildPersistentState state, UUID owner) {
@@ -154,8 +277,14 @@ public final class LandService {
         return name == null || name.isBlank() ? "他のプレイヤー" : name;
     }
 
-    /** Clears the denial-message throttle when a player leaves. */
+    /** Clears per-player throttles and positions when a player leaves. */
     public static void forget(UUID player) {
-        if (player != null) LAST_DENIED_AT.remove(player);
+        if (player == null) return;
+        LAST_DENIED_AT.remove(player);
+        LAST_POSITION.remove(player);
+    }
+
+    public static void forgetPlayer(ServerPlayer player) {
+        if (player != null) forget(player.getUUID());
     }
 }

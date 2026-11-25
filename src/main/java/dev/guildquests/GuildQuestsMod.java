@@ -90,6 +90,10 @@ public final class GuildQuestsMod {
         Platform.onCanBreak(LandService::allowBreak);
         Platform.onCanPlace(LandService::allowPlace);
         Platform.onCanUse(LandService::allowUse);
+        Platform.onCanUseEntity(LandService::allowEntityUse);
+        Platform.onPlayerTick(LandService::onPlayerTick);
+        Platform.onPlayerLeave(LandService::forgetPlayer);
+        Platform.onAllowDamage(LandService::allowDamage);
 
         Platform.onServerTick(server -> {
             GuildService.ensureDailyBoard(server);

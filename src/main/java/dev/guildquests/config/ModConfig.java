@@ -118,6 +118,30 @@ public final class ModConfig {
     /** Land protection: purchased chunks are protected from other players. */
     public boolean landProtectionEnabled = true;
 
+    /** Protect blocks from being broken by other players. */
+    public boolean landProtectBreak = true;
+
+    /** Protect blocks from being placed by other players. */
+    public boolean landProtectPlace = true;
+
+    /** Protect chests, furnaces, hoppers, shulkers and other containers from being opened. */
+    public boolean landProtectContainers = true;
+
+    /** Protect buttons, levers, doors, beds and other right-click block actions. */
+    public boolean landProtectInteract = true;
+
+    /** Protect animals, villagers, item frames and armour stands from being used. */
+    public boolean landProtectEntity = true;
+
+    /** Protect animals and monsters from being attacked by other players. */
+    public boolean landProtectMobDamage = true;
+
+    /** Protect players from being attacked by other players (PvP) on the land. */
+    public boolean landProtectPvp = false;
+
+    /** Stop other players from walking or teleporting into the land. */
+    public boolean landProtectEntry = false;
+
     /** Price of the first chunk a player buys. */
     public long landBasePrice = 1000;
 

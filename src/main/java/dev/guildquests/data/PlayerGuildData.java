@@ -48,6 +48,8 @@ public final class PlayerGuildData {
     public final List<CompoundTag> unreadableMailbox = new ArrayList<>();
     /** COLLECT quest id -> board day it was last claimed; enforces the per-quest cooldown. */
     public final java.util.Map<String, Long> collectClaimedDay = new java.util.HashMap<>();
+    /** Land protection switches chosen in game; -1 means "use the server defaults". */
+    public int landRuleMask = dev.guildquests.service.LandRules.UNSET;
 
     public ActiveQuest findActive(String questId) {
         for (ActiveQuest active : activeQuests) {
@@ -114,6 +116,7 @@ public final class PlayerGuildData {
         nbt.putLong("Loan", loan);
         nbt.putLong("NextLoanInterestAt", nextLoanInterestAt);
         nbt.putLong("LoanCreditMillis", loanCreditMillis);
+        nbt.putInt("LandRuleMask", landRuleMask);
 
         ListTag activeList = new ListTag();
         for (ActiveQuest active : activeQuests) activeList.add(active.toNbt());
@@ -173,6 +176,10 @@ public final class PlayerGuildData {
         }
         data.loan = Math.max(0L, nbt.getLong("Loan"));
         data.nextLoanInterestAt = Math.max(0L, nbt.getLong("NextLoanInterestAt"));
+        data.landRuleMask = nbt.contains("LandRuleMask", Tag.TAG_INT)
+                ? Math.max(dev.guildquests.service.LandRules.UNSET,
+                        Math.min(dev.guildquests.service.LandRules.ALL, nbt.getInt("LandRuleMask")))
+                : dev.guildquests.service.LandRules.UNSET;
         if (data.loan <= 0) {
             data.nextLoanInterestAt = 0;
         }

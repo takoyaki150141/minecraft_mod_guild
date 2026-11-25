@@ -49,6 +49,9 @@ public final class NeoForgeBackend implements Platform.Backend {
     private final List<Platform.BlockPermissionHandler> canBreak = new ArrayList<>();
     private final List<Platform.BlockPermissionHandler> canPlace = new ArrayList<>();
     private final List<Platform.BlockUsePermissionHandler> canUse = new ArrayList<>();
+    private final List<Platform.EntityUsePermissionHandler> canUseEntity = new ArrayList<>();
+    private final List<Consumer<ServerPlayer>> playerTick = new ArrayList<>();
+    private final List<Consumer<ServerPlayer>> playerLeave = new ArrayList<>();
 
     /** Wire the stored handlers up to the NeoForge event bus. Safe to call once at construction. */
     public void registerNeoForgeEvents() {
@@ -62,6 +65,10 @@ public final class NeoForgeBackend implements Platform.Backend {
         NeoForge.EVENT_BUS.addListener(this::handleBlockBreak);
         NeoForge.EVENT_BUS.addListener(this::handleBlockPlace);
         NeoForge.EVENT_BUS.addListener(this::handleBlockUse);
+        NeoForge.EVENT_BUS.addListener(this::handleEntityInteract);
+        NeoForge.EVENT_BUS.addListener(this::handleEntityInteractSpecific);
+        NeoForge.EVENT_BUS.addListener(this::handlePlayerTick);
+        NeoForge.EVENT_BUS.addListener(this::handlePlayerLeave);
     }
 
     private void handleBlockBreak(BlockEvent.BreakEvent event) {
@@ -96,6 +103,46 @@ public final class NeoForgeBackend implements Platform.Backend {
                 event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
                 return;
             }
+        }
+    }
+
+    private void handleEntityInteract(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteract event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        cancelEntityUse(player, event.getTarget(), () -> {
+            event.setCanceled(true);
+            event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
+        });
+    }
+
+    private void handleEntityInteractSpecific(
+            net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.EntityInteractSpecific event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        cancelEntityUse(player, event.getTarget(), () -> {
+            event.setCanceled(true);
+            event.setCancellationResult(net.minecraft.world.InteractionResult.FAIL);
+        });
+    }
+
+    private void cancelEntityUse(ServerPlayer player, net.minecraft.world.entity.Entity target, Runnable cancel) {
+        for (Platform.EntityUsePermissionHandler handler : canUseEntity) {
+            if (!handler.allow(player, target)) {
+                cancel.run();
+                return;
+            }
+        }
+    }
+
+    private void handlePlayerTick(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        for (Consumer<ServerPlayer> handler : playerTick) {
+            handler.accept(player);
+        }
+    }
+
+    private void handlePlayerLeave(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedOutEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        for (Consumer<ServerPlayer> handler : playerLeave) {
+            handler.accept(player);
         }
     }
 
@@ -250,6 +297,21 @@ public final class NeoForgeBackend implements Platform.Backend {
     @Override
     public void onCanUse(Platform.BlockUsePermissionHandler handler) {
         canUse.add(handler);
+    }
+
+    @Override
+    public void onCanUseEntity(Platform.EntityUsePermissionHandler handler) {
+        canUseEntity.add(handler);
+    }
+
+    @Override
+    public void onPlayerTick(Consumer<ServerPlayer> handler) {
+        playerTick.add(handler);
+    }
+
+    @Override
+    public void onPlayerLeave(Consumer<ServerPlayer> handler) {
+        playerLeave.add(handler);
     }
 
     @Override

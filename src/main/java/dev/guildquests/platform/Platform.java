@@ -122,6 +122,21 @@ public final class Platform {
         b().onCanUse(handler);
     }
 
+    /** Return false to cancel right-clicking an entity (land protection). */
+    public static void onCanUseEntity(EntityUsePermissionHandler handler) {
+        b().onCanUseEntity(handler);
+    }
+
+    /** Called after the server ticks a player (land entry checks). */
+    public static void onPlayerTick(Consumer<ServerPlayer> handler) {
+        b().onPlayerTick(handler);
+    }
+
+    /** Called when a player disconnects. */
+    public static void onPlayerLeave(Consumer<ServerPlayer> handler) {
+        b().onPlayerLeave(handler);
+    }
+
     public static boolean canSend(ServerPlayer player, ResourceLocation channel) {
         return b().canSend(player, channel);
     }
@@ -153,6 +168,11 @@ public final class Platform {
     @FunctionalInterface
     public interface BlockUsePermissionHandler {
         boolean allow(ServerPlayer player, net.minecraft.core.BlockPos pos);
+    }
+
+    @FunctionalInterface
+    public interface EntityUsePermissionHandler {
+        boolean allow(ServerPlayer player, net.minecraft.world.entity.Entity target);
     }
 
     public interface Backend {
@@ -193,6 +213,12 @@ public final class Platform {
         void onCanPlace(BlockPermissionHandler handler);
 
         void onCanUse(BlockUsePermissionHandler handler);
+
+        void onCanUseEntity(EntityUsePermissionHandler handler);
+
+        void onPlayerTick(Consumer<ServerPlayer> handler);
+
+        void onPlayerLeave(Consumer<ServerPlayer> handler);
 
         boolean canSend(ServerPlayer player, ResourceLocation channel);
 
