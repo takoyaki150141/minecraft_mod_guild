@@ -123,7 +123,7 @@ public final class UpdateInstaller {
         return properties;
     }
 
-    static String sha256(Path path) throws IOException {
+    public static String sha256(Path path) throws IOException {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             try (var in = Files.newInputStream(path)) {

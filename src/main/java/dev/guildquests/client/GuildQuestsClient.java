@@ -10,6 +10,7 @@ import org.lwjgl.glfw.GLFW;
 
 public final class GuildQuestsClient {
     private static volatile UpdateChecker.UpdateInfo pendingUpdate;
+    private static volatile boolean fallbackScreenPending;
     private static boolean updateScreenShown = false;
 
     private GuildQuestsClient() {
@@ -25,28 +26,58 @@ public final class GuildQuestsClient {
         PlatformClient.onBossPin(BossPinRenderer::set);
         PlatformClient.onDisconnect(BossPinRenderer::clear);
 
-        // Check GitHub for a newer version (async).
+        // Check for a newer version before the game starts. When one exists the standalone
+        // updater window is shown first and the game waits for 「無視して起動」or「更新して再起動」.
         String currentVer = GuildQuestsMod.VERSION;
         String loader = Platform.getLoaderName();
         GuildQuestsMod.LOGGER.info("[Client] Starting update check: current=v{}, loader={}", currentVer, loader);
-        if (!Boolean.getBoolean("guildquests.disableUpdateCheck")) UpdateChecker.checkAsync(currentVer, loader, info -> {
-            pendingUpdate = info;
-            GuildQuestsMod.LOGGER.info("[Client] Update available: v{} (current: v{})", info.latestVersion(), currentVer);
-        });
+        if (!Boolean.getBoolean("guildquests.disableUpdateCheck")) {
+            UpdateChecker.UpdateInfo info = checkBeforeStart(currentVer, loader, 6000);
+            if (info != null) {
+                pendingUpdate = info;
+                GuildQuestsMod.LOGGER.info("[Client] Update available: v{} (current: v{})", info.latestVersion(), currentVer);
+                if (!UpdateWindowLauncher.offer(currentVer, loader, info)) {
+                    // Dev runs and unusual installs fall back to the in-game screen.
+                    fallbackScreenPending = true;
+                }
+            } else {
+                GuildQuestsMod.LOGGER.info("[Client] No update found or check timed out");
+            }
+        }
 
-        // Show the update popup once when the title screen appears.
+        // Only used when the standalone window could not be started.
         PlatformClient.onClientTick(screen -> {
-            if (updateScreenShown) return;
+            if (!fallbackScreenPending || updateScreenShown) return;
             if (screen instanceof TitleScreen) {
-                if (pendingUpdate != null) {
+                UpdateChecker.UpdateInfo info = pendingUpdate;
+                if (info != null) {
                     updateScreenShown = true;
-                    GuildQuestsMod.LOGGER.info("[Client] Showing update screen for v{}", pendingUpdate.latestVersion());
-                    net.minecraft.client.Minecraft.getInstance().setScreen(
-                            new UpdateScreen(screen, currentVer, pendingUpdate));
+                    GuildQuestsMod.LOGGER.info("[Client] Showing the in-game update screen for v{}", info.latestVersion());
+                    net.minecraft.client.Minecraft.getInstance().setScreen(new UpdateScreen(screen, currentVer, info));
                 }
             }
         });
         GuildQuestsMod.LOGGER.info("[Client] GuildQuestsClient.init() done");
+    }
+
+    /** Runs the GitHub check on a worker thread so a slow network cannot stall startup for long. */
+    private static UpdateChecker.UpdateInfo checkBeforeStart(String currentVersion, String loader, long timeoutMillis) {
+        java.util.concurrent.CompletableFuture<UpdateChecker.UpdateInfo> result =
+                new java.util.concurrent.CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                result.complete(UpdateChecker.check(currentVersion, loader));
+            } catch (Throwable e) {
+                result.complete(null);
+            }
+        }, "GuildQuests-UpdateCheck");
+        thread.setDaemon(true);
+        thread.start();
+        try {
+            return result.get(timeoutMillis, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Content registries must be populated before referencing the guild blocks. */
