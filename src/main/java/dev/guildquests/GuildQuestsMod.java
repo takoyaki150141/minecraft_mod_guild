@@ -32,7 +32,7 @@ import java.util.List;
 
 public final class GuildQuestsMod {
     public static final String MOD_ID = "guildquests";
-    public static final String VERSION = "26.18.0";
+    public static final String VERSION = "26.19.0";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static int exploreTicker = 0;
     private static int riboTicker = 0;
@@ -91,7 +91,6 @@ public final class GuildQuestsMod {
         Platform.onCanPlace(LandService::allowPlace);
         Platform.onCanUse(LandService::allowUse);
         Platform.onCanUseEntity(LandService::allowEntityUse);
-        Platform.onPlayerTick(LandService::onPlayerTick);
         Platform.onPlayerLeave(LandService::forgetPlayer);
         Platform.onAllowDamage(LandService::allowDamage);
 

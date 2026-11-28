@@ -50,7 +50,6 @@ public final class NeoForgeBackend implements Platform.Backend {
     private final List<Platform.BlockPermissionHandler> canPlace = new ArrayList<>();
     private final List<Platform.BlockUsePermissionHandler> canUse = new ArrayList<>();
     private final List<Platform.EntityUsePermissionHandler> canUseEntity = new ArrayList<>();
-    private final List<Consumer<ServerPlayer>> playerTick = new ArrayList<>();
     private final List<Consumer<ServerPlayer>> playerLeave = new ArrayList<>();
 
     /** Wire the stored handlers up to the NeoForge event bus. Safe to call once at construction. */
@@ -67,7 +66,6 @@ public final class NeoForgeBackend implements Platform.Backend {
         NeoForge.EVENT_BUS.addListener(this::handleBlockUse);
         NeoForge.EVENT_BUS.addListener(this::handleEntityInteract);
         NeoForge.EVENT_BUS.addListener(this::handleEntityInteractSpecific);
-        NeoForge.EVENT_BUS.addListener(this::handlePlayerTick);
         NeoForge.EVENT_BUS.addListener(this::handlePlayerLeave);
     }
 
@@ -129,13 +127,6 @@ public final class NeoForgeBackend implements Platform.Backend {
                 cancel.run();
                 return;
             }
-        }
-    }
-
-    private void handlePlayerTick(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        for (Consumer<ServerPlayer> handler : playerTick) {
-            handler.accept(player);
         }
     }
 
@@ -302,11 +293,6 @@ public final class NeoForgeBackend implements Platform.Backend {
     @Override
     public void onCanUseEntity(Platform.EntityUsePermissionHandler handler) {
         canUseEntity.add(handler);
-    }
-
-    @Override
-    public void onPlayerTick(Consumer<ServerPlayer> handler) {
-        playerTick.add(handler);
     }
 
     @Override

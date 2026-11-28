@@ -11,12 +11,12 @@ class PlayerGuildDataLandRulesTest {
     @Test
     void ruleMaskSurvivesSaveAndLoad() {
         PlayerGuildData data = new PlayerGuildData();
-        data.landRuleMask = LandRules.BREAK | LandRules.ENTRY;
+        data.landRuleMask = LandRules.BREAK | LandRules.PVP;
 
         CompoundTag tag = data.toNbt(RegistryAccess.EMPTY);
         PlayerGuildData loaded = PlayerGuildData.fromNbt(tag, RegistryAccess.EMPTY);
 
-        assertEquals(LandRules.BREAK | LandRules.ENTRY, loaded.landRuleMask);
+        assertEquals(LandRules.BREAK | LandRules.PVP, loaded.landRuleMask);
     }
 
     @Test
@@ -32,6 +32,10 @@ class PlayerGuildDataLandRulesTest {
         CompoundTag tag = new CompoundTag();
         tag.putInt("LandRuleMask", 0x7FFF);
         assertEquals(LandRules.ALL, PlayerGuildData.fromNbt(tag, RegistryAccess.EMPTY).landRuleMask);
+
+        CompoundTag removedRuleOnly = new CompoundTag();
+        removedRuleOnly.putInt("LandRuleMask", 128);
+        assertEquals(0, PlayerGuildData.fromNbt(removedRuleOnly, RegistryAccess.EMPTY).landRuleMask);
 
         CompoundTag negative = new CompoundTag();
         negative.putInt("LandRuleMask", -99);

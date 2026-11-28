@@ -27,6 +27,23 @@ class LandServiceTest {
     }
 
     @Test
+    void instantSellPaysTheConfiguredShareOfThePurchasePrice() {
+        GuildPersistentState state = new GuildPersistentState();
+        state.landPaid.put("minecraft:overworld|1|1", 2000L);
+        ModConfig config = new ModConfig();
+        config.landSellPercent = 50;
+        assertEquals(1000L, LandService.instantSellPrice(state, config, "minecraft:overworld|1|1"));
+
+        config.landSellPercent = 30;
+        assertEquals(600L, LandService.instantSellPrice(state, config, "minecraft:overworld|1|1"));
+
+        // Chunks bought before paid prices were stored fall back to the base price.
+        config.landSellPercent = 50;
+        config.landBasePrice = 1200;
+        assertEquals(600L, LandService.instantSellPrice(state, config, "minecraft:overworld|9|9"));
+    }
+
+    @Test
     void ownedCountOnlyCountsThatPlayer() {
         GuildPersistentState state = new GuildPersistentState();
         UUID first = UUID.randomUUID();

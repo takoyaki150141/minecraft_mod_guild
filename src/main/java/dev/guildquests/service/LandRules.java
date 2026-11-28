@@ -17,8 +17,7 @@ public final class LandRules {
     public static final int ENTITY = 16;
     public static final int MOB_DAMAGE = 32;
     public static final int PVP = 64;
-    public static final int ENTRY = 128;
-    public static final int ALL = 255;
+    public static final int ALL = 127;
 
     /** Stored value meaning "the player never changed anything; use the config". */
     public static final int UNSET = -1;
@@ -33,8 +32,7 @@ public final class LandRules {
             new Rule(INTERACT, "操作", "ボタン・ドアなどの操作"),
             new Rule(ENTITY, "生物", "動物・村人などへの操作"),
             new Rule(MOB_DAMAGE, "生物攻撃", "動物・モンスターへの攻撃"),
-            new Rule(PVP, "PvP", "プレイヤーへの攻撃"),
-            new Rule(ENTRY, "侵入", "チャンクへの侵入防止")
+            new Rule(PVP, "PvP", "プレイヤーへの攻撃")
     );
 
     private LandRules() { }
@@ -50,7 +48,6 @@ public final class LandRules {
         if (config.landProtectEntity) mask |= ENTITY;
         if (config.landProtectMobDamage) mask |= MOB_DAMAGE;
         if (config.landProtectPvp) mask |= PVP;
-        if (config.landProtectEntry) mask |= ENTRY;
         return mask;
     }
 

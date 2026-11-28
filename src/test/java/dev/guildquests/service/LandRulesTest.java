@@ -20,23 +20,29 @@ class LandRulesTest {
         assertTrue(LandRules.has(mask, LandRules.ENTITY));
         assertTrue(LandRules.has(mask, LandRules.MOB_DAMAGE));
         assertFalse(LandRules.has(mask, LandRules.PVP));
-        assertFalse(LandRules.has(mask, LandRules.ENTRY));
 
         config.landProtectBreak = false;
-        config.landProtectEntry = true;
+        config.landProtectPvp = true;
         int changed = LandRules.defaults(config);
         assertFalse(LandRules.has(changed, LandRules.BREAK));
-        assertTrue(LandRules.has(changed, LandRules.ENTRY));
+        assertTrue(LandRules.has(changed, LandRules.PVP));
     }
 
     @Test
     void aStoredMaskOverridesTheDefaults() {
         ModConfig config = new ModConfig();
         assertEquals(LandRules.defaults(config), LandRules.resolve(LandRules.UNSET, config));
-        int stored = LandRules.ENTRY | LandRules.PVP;
+        int stored = LandRules.PVP | LandRules.MOB_DAMAGE;
         assertEquals(stored, LandRules.resolve(stored, config));
         // Unknown bits must not leak through.
-        assertEquals(LandRules.BREAK, LandRules.resolve(LandRules.BREAK | 0xF00, config));
+        assertEquals(LandRules.BREAK, LandRules.resolve(LandRules.BREAK | 0xF80, config));
+    }
+
+    @Test
+    void theRemovedEntryBitIsDropped() {
+        // Old saves may still carry bit 7 (the removed 侵入 rule).
+        assertEquals(0, LandRules.resolve(128, new ModConfig()));
+        assertEquals(LandRules.PVP, LandRules.resolve(128 | LandRules.PVP, new ModConfig()));
     }
 
     @Test
@@ -51,16 +57,16 @@ class LandRulesTest {
     @Test
     void summaryListsShortNames() {
         assertEquals("保護: 対象なし", LandRules.summary(0));
-        String text = LandRules.summary(LandRules.BREAK | LandRules.ENTRY);
+        String text = LandRules.summary(LandRules.BREAK | LandRules.PVP);
         assertTrue(text.contains("破壊"));
-        assertTrue(text.contains("侵入"));
-        assertFalse(text.contains("PvP"));
+        assertTrue(text.contains("PvP"));
+        assertFalse(text.contains("侵入"));
     }
 
     @Test
     void ruleIndexLookupIsBoundsChecked() {
         assertEquals(LandRules.RULES.get(0), LandRules.byIndex(0));
-        assertEquals(LandRules.ENTRY, LandRules.byIndex(LandRules.RULES.size() - 1).bit());
+        assertEquals(LandRules.PVP, LandRules.byIndex(LandRules.RULES.size() - 1).bit());
         assertNull(LandRules.byIndex(-1));
         assertNull(LandRules.byIndex(LandRules.RULES.size()));
     }

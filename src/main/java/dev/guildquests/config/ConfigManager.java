@@ -131,6 +131,7 @@ public final class ConfigManager {
         c.landPriceStep = Math.max(0, Math.min(1_000_000_000L, c.landPriceStep));
         c.landMaxChunks = Math.max(0, Math.min(1_000_000, c.landMaxChunks));
         c.landMapRadius = Math.max(1, Math.min(8, c.landMapRadius));
+        c.landSellPercent = Math.max(0, Math.min(100, c.landSellPercent));
         if (c.rankThresholds == null || c.rankThresholds.isEmpty()) c.rankThresholds = new ModConfig().rankThresholds;
         c.consumerLoanInterestPercent = Math.max(0, Math.min(100, c.consumerLoanInterestPercent));
         c.consumerLoanIntervalMinutes = Math.max(1, c.consumerLoanIntervalMinutes);

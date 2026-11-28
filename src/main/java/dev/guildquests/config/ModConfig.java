@@ -139,9 +139,6 @@ public final class ModConfig {
     /** Protect players from being attacked by other players (PvP) on the land. */
     public boolean landProtectPvp = false;
 
-    /** Stop other players from walking or teleporting into the land. */
-    public boolean landProtectEntry = false;
-
     /** Price of the first chunk a player buys. */
     public long landBasePrice = 1000;
 
@@ -153,6 +150,9 @@ public final class ModConfig {
 
     /** Chunk radius drawn around the player on the purchase map (1-8). */
     public int landMapRadius = 4;
+
+    /** Percentage of the purchase price paid when selling land back to the system. */
+    public int landSellPercent = 50;
 
     public ModConfig() {
         rankThresholds.put("E", 0);

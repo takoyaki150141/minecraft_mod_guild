@@ -10,7 +10,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.damagesource.DamageSource;
@@ -20,8 +19,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,11 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class LandService {
     private static final Map<UUID, Long> LAST_DENIED_AT = new ConcurrentHashMap<>();
-    /** Last position a player was allowed to occupy, used to push back entries. */
-    private static final Map<UUID, LastPosition> LAST_POSITION = new ConcurrentHashMap<>();
-
-    private record LastPosition(String dimension, int chunkX, int chunkZ,
-                                double x, double y, double z) { }
 
     private LandService() { }
 
@@ -115,12 +109,140 @@ public final class LandService {
         }
 
         state.landOwners.put(key, player.getUUID());
+        state.landPaid.put(key, Math.max(0, price));
         state.setDirty();
         GuildService.message(player, "チャンク (" + chunkX + ", " + chunkZ + ") を "
                 + Numbers.format(price) + " コインで購入しました。次の価格: "
                 + Numbers.format(price(config, owned + 1)) + " コイン", ChatFormatting.GREEN);
-        if (player.containerMenu instanceof LandScreenHandler menu) menu.refresh();
+        refreshMenu(player);
         return true;
+    }
+
+    // ------------------------------------------------------------------
+    // Selling
+    // ------------------------------------------------------------------
+
+    /** Payout when selling back to the system: a percentage of the price the owner paid. */
+    public static long instantSellPrice(GuildPersistentState state, ModConfig config, String key) {
+        if (state == null || config == null) return 0;
+        Long paid = state.landPaid.get(key);
+        long base = paid != null && paid > 0 ? paid : Math.max(0, config.landBasePrice);
+        int percent = Math.max(0, Math.min(100, config.landSellPercent));
+        return base * percent / 100;
+    }
+
+    /** Sells an owned chunk back to the system at the reduced rate. */
+    public static boolean sellToSystem(ServerPlayer player, int chunkX, int chunkZ) {
+        MinecraftServer server = player == null ? null : player.getServer();
+        if (server == null) return false;
+        GuildPersistentState state = GuildPersistentState.get(server);
+        String key = key(player.level(), chunkX, chunkZ);
+        if (!player.getUUID().equals(state.landOwners.get(key))) {
+            GuildService.message(player, "自分のチャンクだけ売却できます。", ChatFormatting.RED);
+            return false;
+        }
+        long payout = instantSellPrice(state, ConfigManager.config(), key);
+        state.landOwners.remove(key);
+        state.landPaid.remove(key);
+        state.landListings.remove(key);
+        state.setDirty();
+        GuildService.creditCoins(server, player.getUUID(), payout);
+        GuildService.message(player, "チャンク (" + chunkX + ", " + chunkZ + ") をシステムに "
+                + Numbers.format(payout) + " コインで売却しました。", ChatFormatting.GREEN);
+        refreshMenu(player);
+        return true;
+    }
+
+    /** Offers an owned chunk to other players at a fixed price. */
+    public static boolean listForSale(ServerPlayer player, int chunkX, int chunkZ, long price) {
+        MinecraftServer server = player == null ? null : player.getServer();
+        if (server == null) return false;
+        GuildPersistentState state = GuildPersistentState.get(server);
+        String key = key(player.level(), chunkX, chunkZ);
+        if (!player.getUUID().equals(state.landOwners.get(key))) {
+            GuildService.message(player, "自分のチャンクだけ出品できます。", ChatFormatting.RED);
+            return false;
+        }
+        if (price <= 0 || price > 1_000_000_000L) {
+            GuildService.message(player, "価格は 1 〜 1,000,000,000 コインで指定してください。", ChatFormatting.RED);
+            return false;
+        }
+        state.landListings.put(key, new GuildPersistentState.LandListing(
+                player.level().dimension().location().toString(), chunkX, chunkZ,
+                player.getUUID(), price, System.currentTimeMillis()));
+        state.setDirty();
+        GuildService.message(player, "チャンク (" + chunkX + ", " + chunkZ + ") を "
+                + Numbers.format(price) + " コインで出品しました。", ChatFormatting.GREEN);
+        refreshMenu(player);
+        return true;
+    }
+
+    public static boolean cancelListing(ServerPlayer player, int chunkX, int chunkZ) {
+        MinecraftServer server = player == null ? null : player.getServer();
+        if (server == null) return false;
+        GuildPersistentState state = GuildPersistentState.get(server);
+        String key = key(player.level(), chunkX, chunkZ);
+        GuildPersistentState.LandListing listing = state.landListings.get(key);
+        if (listing == null || !listing.seller.equals(player.getUUID())) {
+            GuildService.message(player, "このチャンクの出品はありません。", ChatFormatting.RED);
+            return false;
+        }
+        state.landListings.remove(key);
+        state.setDirty();
+        GuildService.message(player, "チャンク (" + chunkX + ", " + chunkZ + ") の出品を取り消しました。",
+                ChatFormatting.YELLOW);
+        refreshMenu(player);
+        return true;
+    }
+
+    /** Buys a listed chunk from another player at the listed price. */
+    public static boolean buyListing(ServerPlayer player, int chunkX, int chunkZ) {
+        MinecraftServer server = player == null ? null : player.getServer();
+        if (server == null) return false;
+        GuildPersistentState state = GuildPersistentState.get(server);
+        String key = key(player.level(), chunkX, chunkZ);
+        GuildPersistentState.LandListing listing = state.landListings.get(key);
+        if (listing == null) {
+            GuildService.message(player, "このチャンクは出品されていません。", ChatFormatting.RED);
+            return false;
+        }
+        if (listing.seller.equals(player.getUUID())) {
+            GuildService.message(player, "自分の出品は購入できません。", ChatFormatting.RED);
+            return false;
+        }
+        if (!listing.seller.equals(state.landOwners.get(key))) {
+            // The owner changed while the listing stayed behind.
+            state.landListings.remove(key);
+            state.setDirty();
+            GuildService.message(player, "この出品は無効になっていました。", ChatFormatting.RED);
+            refreshMenu(player);
+            return false;
+        }
+        if (!GuildService.payCoins(player, listing.price)) {
+            GuildService.message(player, "コインが足りません（必要 " + Numbers.format(listing.price)
+                    + " / 所持 " + Numbers.format(GuildService.data(player).coins) + "）。", ChatFormatting.RED);
+            return false;
+        }
+
+        state.landOwners.put(key, player.getUUID());
+        state.landPaid.put(key, listing.price);
+        state.landListings.remove(key);
+        state.setDirty();
+        GuildService.creditCoins(server, listing.seller, listing.price);
+        GuildService.message(player, "チャンク (" + chunkX + ", " + chunkZ + ") を "
+                + Numbers.format(listing.price) + " コインで購入しました。", ChatFormatting.GREEN);
+        ServerPlayer seller = server.getPlayerList().getPlayer(listing.seller);
+        if (seller != null) {
+            GuildService.message(seller, "チャンク (" + chunkX + ", " + chunkZ + ") が "
+                    + Numbers.format(listing.price) + " コインで売れました。", ChatFormatting.GREEN);
+            if (seller.containerMenu instanceof LandScreenHandler menu) menu.refresh();
+        }
+        refreshMenu(player);
+        return true;
+    }
+
+    private static void refreshMenu(ServerPlayer player) {
+        if (player.containerMenu instanceof LandScreenHandler menu) menu.refresh();
     }
 
     // ------------------------------------------------------------------
@@ -161,37 +283,6 @@ public final class LandService {
                 pvp ? LandRules.PVP : LandRules.MOB_DAMAGE, pvp ? "PvP" : "生物への攻撃");
     }
 
-    /**
-     * Pushes a player back when they walk into someone else's land.
-     * Only crossings are blocked: a player already inside keeps control and can walk out.
-     */
-    public static void onPlayerTick(ServerPlayer player) {
-        if (player == null || !(player.level() instanceof ServerLevel level)) return;
-        UUID id = player.getUUID();
-        String dimension = level.dimension().location().toString();
-        int chunkX = player.getBlockX() >> 4;
-        int chunkZ = player.getBlockZ() >> 4;
-        LastPosition last = LAST_POSITION.get(id);
-        if (last == null || !last.dimension().equals(dimension)) {
-            remember(player, dimension, chunkX, chunkZ);
-            return;
-        }
-        if (last.chunkX() == chunkX && last.chunkZ() == chunkZ) {
-            remember(player, dimension, chunkX, chunkZ);
-            return;
-        }
-
-        UUID owner = blockingOwner(player, level, new BlockPos(chunkX << 4, player.getBlockY(), chunkZ << 4));
-        if (owner != null && hasRule(player, owner, LandRules.ENTRY)) {
-            player.teleportTo(level, last.x(), last.y(), last.z(), player.getYRot(), player.getXRot());
-            player.setDeltaMovement(Vec3.ZERO);
-            deny(player, owner, "侵入");
-            LAST_POSITION.put(id, last);
-            return;
-        }
-        remember(player, dimension, chunkX, chunkZ);
-    }
-
     /** Flips one switch for the player's own land and saves it. */
     public static boolean toggleRule(ServerPlayer player, int bit) {
         if (player == null || player.getServer() == null) return false;
@@ -209,16 +300,54 @@ public final class LandService {
         return effectiveRules(state, player.getUUID());
     }
 
+    /** True when {@code owner} allows {@code other} to build and interact on their land. */
+    public static boolean isTrusted(GuildPersistentState state, UUID owner, UUID other) {
+        if (state == null || owner == null || other == null || owner.equals(other)) return false;
+        return state.get(owner).landTrusted.contains(other);
+    }
+
+    /** Adds or removes one player from the owner's whitelist. */
+    public static boolean toggleTrusted(ServerPlayer owner, UUID target) {
+        if (owner == null || owner.getServer() == null || target == null || target.equals(owner.getUUID())) {
+            return false;
+        }
+        GuildPersistentState state = GuildPersistentState.get(owner.getServer());
+        PlayerGuildData data = state.get(owner.getUUID());
+        if (!data.landTrusted.remove(target)) data.landTrusted.add(target);
+        state.setDirty();
+        return true;
+    }
+
+    /** One whitelist row: the target player, their name and whether they are allowed. */
+    public record TrustEntry(UUID id, String name, boolean allowed) { }
+
+    /**
+     * Players that can appear on the whitelist: everyone online plus already-trusted
+     * players who are offline. Sorted by name so the client and server agree on indices.
+     */
+    public static List<TrustEntry> trustEntries(ServerPlayer owner, GuildPersistentState state) {
+        if (owner == null || owner.getServer() == null || state == null) return List.of();
+        PlayerGuildData data = state.get(owner.getUUID());
+        Map<UUID, String> names = new java.util.LinkedHashMap<>();
+        for (ServerPlayer online : owner.getServer().getPlayerList().getPlayers()) {
+            if (online.getUUID().equals(owner.getUUID())) continue;
+            names.put(online.getUUID(), online.getGameProfile().getName());
+        }
+        for (UUID id : data.landTrusted) {
+            names.putIfAbsent(id, trustName(state, id));
+        }
+        return names.entrySet().stream()
+                .map(entry -> new TrustEntry(entry.getKey(), entry.getValue(),
+                        data.landTrusted.contains(entry.getKey())))
+                .sorted(java.util.Comparator.comparing(TrustEntry::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
     /** Footer text for the map screen. */
     public static String rulesSummary(ServerPlayer player) {
         ModConfig config = ConfigManager.config();
         if (!config.landProtectionEnabled) return "保護: 無効（サーバー設定）";
         return "自分の保護: " + LandRules.names(ownRules(player));
-    }
-
-    private static void remember(ServerPlayer player, String dimension, int chunkX, int chunkZ) {
-        LAST_POSITION.put(player.getUUID(), new LastPosition(dimension, chunkX, chunkZ,
-                player.getX(), player.getY(), player.getZ()));
     }
 
     private static boolean allow(ServerPlayer player, Level level, BlockPos pos, int rule, String action) {
@@ -251,7 +380,15 @@ public final class LandService {
         GuildPersistentState state = GuildPersistentState.get(server);
         UUID owner = state.landOwners.get(key(level, pos.getX() >> 4, pos.getZ() >> 4));
         if (owner == null || owner.equals(player.getUUID())) return null;
+        if (isTrusted(state, owner, player.getUUID())) return null;
         return owner;
+    }
+
+    private static String trustName(GuildPersistentState state, UUID id) {
+        String name = state.get(id).playerName;
+        if (name != null && !name.isBlank()) return name;
+        String raw = id.toString();
+        return raw.substring(0, 8);
     }
 
     private static boolean isContainer(Level level, BlockPos pos) {
@@ -277,11 +414,10 @@ public final class LandService {
         return name == null || name.isBlank() ? "他のプレイヤー" : name;
     }
 
-    /** Clears per-player throttles and positions when a player leaves. */
+    /** Clears per-player throttles when a player leaves. */
     public static void forget(UUID player) {
         if (player == null) return;
         LAST_DENIED_AT.remove(player);
-        LAST_POSITION.remove(player);
     }
 
     public static void forgetPlayer(ServerPlayer player) {

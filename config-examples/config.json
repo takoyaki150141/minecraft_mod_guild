@@ -45,11 +45,11 @@
   "landProtectEntity": true,
   "landProtectMobDamage": true,
   "landProtectPvp": false,
-  "landProtectEntry": false,
   "landBasePrice": 1000,
   "landPriceStep": 250,
   "landMaxChunks": 0,
   "landMapRadius": 4,
+  "landSellPercent": 50,
   "rankThresholds": {
     "E": 0,
     "D": 5,

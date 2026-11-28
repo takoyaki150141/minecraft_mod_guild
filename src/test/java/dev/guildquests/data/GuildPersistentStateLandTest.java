@@ -33,7 +33,6 @@ class GuildPersistentStateLandTest {
         CompoundTag bad = new CompoundTag();
         bad.putString("Dim", "minecraft:overworld");
         bad.putString("X", "not-a-number");
-        CompoundTag list = new CompoundTag();
         net.minecraft.nbt.ListTag entries = new net.minecraft.nbt.ListTag();
         entries.add(bad);
         tag.put("LandOwners", entries);
@@ -41,5 +40,35 @@ class GuildPersistentStateLandTest {
         GuildPersistentState loaded = GuildPersistentState.fromNbt(tag, RegistryAccess.EMPTY);
         assertTrue(loaded.landOwners.isEmpty());
         assertFalse(tag.contains("Missing"));
+    }
+
+    @Test
+    void listingsAndPaidPricesSurviveSaveAndLoad() {
+        GuildPersistentState state = new GuildPersistentState();
+        UUID owner = UUID.randomUUID();
+        state.landOwners.put("minecraft:overworld|2|3", owner);
+        state.landPaid.put("minecraft:overworld|2|3", 1750L);
+        state.landListings.put("minecraft:overworld|2|3", new GuildPersistentState.LandListing(
+                "minecraft:overworld", 2, 3, owner, 4000L, 123456789L));
+
+        CompoundTag tag = state.save(new CompoundTag(), RegistryAccess.EMPTY);
+        GuildPersistentState loaded = GuildPersistentState.fromNbt(tag, RegistryAccess.EMPTY);
+
+        assertEquals(1750L, loaded.landPaid.get("minecraft:overworld|2|3"));
+        GuildPersistentState.LandListing listing = loaded.landListings.get("minecraft:overworld|2|3");
+        assertEquals(owner, listing.seller);
+        assertEquals(4000L, listing.price);
+    }
+
+    @Test
+    void listingsWithoutTheirOwnerAreDropped() {
+        GuildPersistentState state = new GuildPersistentState();
+        UUID owner = UUID.randomUUID();
+        state.landListings.put("minecraft:overworld|0|0", new GuildPersistentState.LandListing(
+                "minecraft:overworld", 0, 0, owner, 100L, 1L));
+
+        CompoundTag tag = state.save(new CompoundTag(), RegistryAccess.EMPTY);
+        GuildPersistentState loaded = GuildPersistentState.fromNbt(tag, RegistryAccess.EMPTY);
+        assertTrue(loaded.landListings.isEmpty());
     }
 }

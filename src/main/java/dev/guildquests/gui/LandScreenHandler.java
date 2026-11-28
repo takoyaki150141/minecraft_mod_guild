@@ -10,6 +10,7 @@ import dev.guildquests.service.LandTerrain;
 import dev.guildquests.util.Numbers;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -32,10 +33,14 @@ public final class LandScreenHandler extends GuildMenu {
     private static final int DISPLAY_SLOTS = 54;
     /** Menu button ids 100..107 flip the protection switches on the rules screen. */
     public static final int RULE_BUTTON_BASE = 100;
+    /** Menu button ids 200.. flip a whitelist entry. */
+    public static final int TRUST_BUTTON_BASE = 200;
     /** Terrain is re-sampled only occasionally; blocks rarely change while the map is open. */
     private static final long TERRAIN_REFRESH_MILLIS = 3000;
     private final SimpleContainer display = new SimpleContainer(DISPLAY_SLOTS);
     private final ServerPlayer owner;
+    /** Whitelist order used by the last published view; click ids index into it. */
+    private java.util.List<UUID> trustCandidates = java.util.List.of();
     private int[] terrain;
     private long terrainCenter = Long.MIN_VALUE;
     private int terrainRadius = -1;
@@ -88,20 +93,32 @@ public final class LandScreenHandler extends GuildMenu {
         int radius = Math.max(1, Math.min(8, config.landMapRadius));
         int side = radius * 2 + 1;
         byte[] cells = new byte[side * side];
+        long[] sellPrices = new long[side * side];
         CompoundTag owners = new CompoundTag();
+        ListTag listings = new ListTag();
         int owned = LandService.ownedCount(state, owner.getUUID());
 
         for (int dz = -radius; dz <= radius; dz++) {
             for (int dx = -radius; dx <= radius; dx++) {
                 int index = (dz + radius) * side + (dx + radius);
-                UUID ownerId = state.landOwners.get(LandService.key(owner.level(), center.x + dx, center.z + dz));
+                String chunkKey = LandService.key(owner.level(), center.x + dx, center.z + dz);
+                UUID ownerId = state.landOwners.get(chunkKey);
                 if (ownerId == null) {
                     cells[index] = LandView.UNOWNED;
                 } else if (ownerId.equals(owner.getUUID())) {
                     cells[index] = LandView.SELF;
+                    sellPrices[index] = LandService.instantSellPrice(state, config, chunkKey);
                 } else {
                     cells[index] = LandView.OTHER;
                     owners.putString(Integer.toString(index), ownerName(state, ownerId));
+                }
+                GuildPersistentState.LandListing listing = state.landListings.get(chunkKey);
+                if (listing != null) {
+                    CompoundTag row = new CompoundTag();
+                    row.putInt("index", index);
+                    row.putLong("price", listing.price);
+                    row.putString("seller", ownerName(state, listing.seller));
+                    listings.add(row);
                 }
             }
         }
@@ -120,7 +137,24 @@ public final class LandScreenHandler extends GuildMenu {
         view.putString("rules", LandService.rulesSummary(owner));
         view.putByteArray("cells", cells);
         view.putIntArray("terrain", terrain(center, radius, side));
+        view.putLongArray("sellPrices", sellPrices);
+        view.put("listings", listings);
+        view.put("market", marketListings(state));
         view.put("owners", owners);
+
+        java.util.List<LandService.TrustEntry> entries = LandService.trustEntries(owner, state);
+        ListTag trust = new ListTag();
+        java.util.List<UUID> ids = new java.util.ArrayList<>(entries.size());
+        for (LandService.TrustEntry entry : entries) {
+            CompoundTag row = new CompoundTag();
+            row.putUUID("id", entry.id());
+            row.putString("name", entry.name());
+            row.putBoolean("allowed", entry.allowed());
+            trust.add(row);
+            ids.add(entry.id());
+        }
+        trustCandidates = java.util.List.copyOf(ids);
+        view.put("trust", trust);
 
         display.setItem(0, GuildItems.item(Items.FILLED_MAP, "土地マップ",
                 "購入するチャンクをクリックしてから「購入」を押してください。",
@@ -132,6 +166,26 @@ public final class LandScreenHandler extends GuildMenu {
     private static String ownerName(GuildPersistentState state, UUID owner) {
         String name = state.get(owner).playerName;
         return name == null || name.isBlank() ? "他のプレイヤー" : name;
+    }
+
+    /** Every listing in the player's dimension, cheapest first, for the market screen. */
+    private ListTag marketListings(GuildPersistentState state) {
+        String dimension = owner.level().dimension().location().toString();
+        ListTag market = new ListTag();
+        state.landListings.values().stream()
+                .filter(listing -> listing.dimension.equals(dimension))
+                .sorted(java.util.Comparator.comparingLong(listing -> listing.price))
+                .limit(300)
+                .forEach(listing -> {
+                    CompoundTag row = new CompoundTag();
+                    row.putInt("x", listing.chunkX);
+                    row.putInt("z", listing.chunkZ);
+                    row.putLong("price", listing.price);
+                    row.putString("seller", ownerName(state, listing.seller));
+                    row.putBoolean("self", listing.seller.equals(owner.getUUID()));
+                    market.add(row);
+                });
+        return market;
     }
 
     /** Cached surface colours for the current centre chunk and radius. */
@@ -163,10 +217,19 @@ public final class LandScreenHandler extends GuildMenu {
             return true;
         }
         LandRules.Rule rule = LandRules.byIndex(button - RULE_BUTTON_BASE);
-        if (rule == null || !LandService.toggleRule(serverPlayer, rule.bit())) return false;
-        populate();
-        broadcastChanges();
-        return true;
+        if (rule != null && LandService.toggleRule(serverPlayer, rule.bit())) {
+            populate();
+            broadcastChanges();
+            return true;
+        }
+        int trustIndex = button - TRUST_BUTTON_BASE;
+        if (trustIndex >= 0 && trustIndex < trustCandidates.size()
+                && LandService.toggleTrusted(serverPlayer, trustCandidates.get(trustIndex))) {
+            populate();
+            broadcastChanges();
+            return true;
+        }
+        return false;
     }
 
     @Override public void clicked(int slotIndex, int button, ClickType actionType, Player player) {

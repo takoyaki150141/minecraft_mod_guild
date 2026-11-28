@@ -51,6 +51,9 @@ public final class PlayerGuildData {
     /** Land protection switches chosen in game; -1 means "use the server defaults". */
     public int landRuleMask = dev.guildquests.service.LandRules.UNSET;
 
+    /** Players allowed to build and interact on this player's land. */
+    public final java.util.Set<java.util.UUID> landTrusted = new java.util.HashSet<>();
+
     public ActiveQuest findActive(String questId) {
         for (ActiveQuest active : activeQuests) {
             if (active.questId.equals(questId)) return active;
@@ -117,6 +120,13 @@ public final class PlayerGuildData {
         nbt.putLong("NextLoanInterestAt", nextLoanInterestAt);
         nbt.putLong("LoanCreditMillis", loanCreditMillis);
         nbt.putInt("LandRuleMask", landRuleMask);
+        ListTag trustedList = new ListTag();
+        for (java.util.UUID id : landTrusted) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("Id", id);
+            trustedList.add(entry);
+        }
+        nbt.put("LandTrusted", trustedList);
 
         ListTag activeList = new ListTag();
         for (ActiveQuest active : activeQuests) activeList.add(active.toNbt());
@@ -177,9 +187,14 @@ public final class PlayerGuildData {
         data.loan = Math.max(0L, nbt.getLong("Loan"));
         data.nextLoanInterestAt = Math.max(0L, nbt.getLong("NextLoanInterestAt"));
         data.landRuleMask = nbt.contains("LandRuleMask", Tag.TAG_INT)
-                ? Math.max(dev.guildquests.service.LandRules.UNSET,
-                        Math.min(dev.guildquests.service.LandRules.ALL, nbt.getInt("LandRuleMask")))
+                ? (nbt.getInt("LandRuleMask") < 0 ? dev.guildquests.service.LandRules.UNSET
+                        : nbt.getInt("LandRuleMask") & dev.guildquests.service.LandRules.ALL)
                 : dev.guildquests.service.LandRules.UNSET;
+        ListTag trustedList = nbt.getList("LandTrusted", Tag.TAG_COMPOUND);
+        for (int i = 0; i < trustedList.size(); i++) {
+            CompoundTag entry = trustedList.getCompound(i);
+            if (entry.hasUUID("Id")) data.landTrusted.add(entry.getUUID("Id"));
+        }
         if (data.loan <= 0) {
             data.nextLoanInterestAt = 0;
         }

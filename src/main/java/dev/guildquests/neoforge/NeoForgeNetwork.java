@@ -18,7 +18,7 @@ import java.util.function.Consumer;
  * The single NeoForge play channel, shared by guild, boss pin and GUI packets.
  */
 public final class NeoForgeNetwork {
-    public static final String PROTOCOL = "5";
+    public static final String PROTOCOL = "6";
 
     private static Consumer<ServerPlayer> openGuildHandler;
     private static BossPinSink bossPinSink;
@@ -33,6 +33,7 @@ public final class NeoForgeNetwork {
         registrar.playToClient(BossPinS2C.TYPE, BossPinS2C.STREAM_CODEC, NeoForgeNetwork::handleBossPin);
         registrar.playToServer(GuiAmountC2S.TYPE, GuiAmountC2S.STREAM_CODEC, NeoForgeNetwork::handleGuiAmount);
         registrar.playToServer(BuyLandC2S.TYPE, BuyLandC2S.STREAM_CODEC, NeoForgeNetwork::handleBuyLand);
+        registrar.playToServer(LandSaleC2S.TYPE, LandSaleC2S.STREAM_CODEC, NeoForgeNetwork::handleLandSale);
     }
 
     private static void handleOpenGuild(OpenGuildC2S payload, IPayloadContext context) {
@@ -90,6 +91,41 @@ public final class NeoForgeNetwork {
     /** C2S: buy one chunk from the land map. */
     public static void sendBuyLand(int chunkX, int chunkZ) {
         PacketDistributor.sendToServer(new BuyLandC2S(chunkX, chunkZ));
+    }
+
+    private static void handleLandSale(LandSaleC2S payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (!(context.player() instanceof ServerPlayer player)) return;
+            switch (payload.action()) {
+                case 0 -> LandService.sellToSystem(player, payload.chunkX(), payload.chunkZ());
+                case 1 -> LandService.listForSale(player, payload.chunkX(), payload.chunkZ(), payload.price());
+                case 2 -> LandService.cancelListing(player, payload.chunkX(), payload.chunkZ());
+                case 3 -> LandService.buyListing(player, payload.chunkX(), payload.chunkZ());
+                default -> { }
+            }
+        });
+    }
+
+    /** C2S: 0 = sell to the system, 1 = list at a price, 2 = cancel, 3 = buy a listing. */
+    public static void sendLandSale(int action, int chunkX, int chunkZ, long price) {
+        PacketDistributor.sendToServer(new LandSaleC2S(action, chunkX, chunkZ, price));
+    }
+
+    public record LandSaleC2S(int action, int chunkX, int chunkZ, long price) implements CustomPacketPayload {
+        public static final Type<LandSaleC2S> TYPE = new Type<>(
+                ResourceLocation.fromNamespaceAndPath("guildquests", "land_sale"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, LandSaleC2S> STREAM_CODEC =
+                StreamCodec.composite(
+                        ByteBufCodecs.VAR_INT, LandSaleC2S::action,
+                        ByteBufCodecs.VAR_INT, LandSaleC2S::chunkX,
+                        ByteBufCodecs.VAR_INT, LandSaleC2S::chunkZ,
+                        ByteBufCodecs.VAR_LONG, LandSaleC2S::price,
+                        LandSaleC2S::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
     }
 
     public record BuyLandC2S(int chunkX, int chunkZ) implements CustomPacketPayload {

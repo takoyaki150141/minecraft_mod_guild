@@ -15,6 +15,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** Chunk map centered on the player; the server owns all purchase decisions. */
 public final class LandMapScreen extends GuildMenuScreen {
     private static final int COLOR_NO_TERRAIN = 0xFF2B3038;
@@ -30,6 +33,10 @@ public final class LandMapScreen extends GuildMenuScreen {
     private LandMapLayout layout;
     private int selected = -1;
     private Button buyButton;
+    private final Map<Integer, Listing> listings = new HashMap<>();
+    private long[] sellPrices = new long[0];
+
+    private record Listing(long price, String seller) { }
 
     public LandMapScreen(GuildClientMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -59,6 +66,13 @@ public final class LandMapScreen extends GuildMenuScreen {
     private void readView() {
         CompoundTag tag = GuildItems.tag(menu.getSlot(0).getItem());
         view = tag.contains(LandView.TAG) ? tag.getCompound(LandView.TAG) : new CompoundTag();
+        listings.clear();
+        net.minecraft.nbt.ListTag list = view.getList("listings", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag row = list.getCompound(i);
+            listings.put(row.getInt("index"), new Listing(row.getLong("price"), row.getString("seller")));
+        }
+        sellPrices = view.getLongArray("sellPrices");
     }
 
     private void rebuild() {
@@ -71,9 +85,13 @@ public final class LandMapScreen extends GuildMenuScreen {
         int totalWidth = sideWidth * 2 + buyWidth + 12;
         int x = layout.contentLeft() + Math.max(0, (layout.contentWidth() - totalWidth) / 2);
         int y = layout.buttonY();
+        int topButtonWidth = rulesButtonWidth();
+        addRenderableWidget(Button.builder(Component.literal("出品一覧"), b -> openMarket())
+                .bounds(layout.contentLeft() + layout.contentWidth() - topButtonWidth * 2 - 6, 4,
+                        topButtonWidth, 16).build());
         addRenderableWidget(Button.builder(Component.literal("保護設定"), b -> openRules())
-                .bounds(layout.contentLeft() + layout.contentWidth() - rulesButtonWidth(), 4,
-                        rulesButtonWidth(), 16).build());
+                .bounds(layout.contentLeft() + layout.contentWidth() - topButtonWidth, 4,
+                        topButtonWidth, 16).build());
         addRenderableWidget(Button.builder(Component.literal("戻る"), b -> back())
                 .bounds(x, y, sideWidth, LandMapLayout.BUTTON_HEIGHT).build());
         buyButton = addRenderableWidget(Button.builder(Component.literal("購入"), b -> buySelected())
@@ -91,6 +109,10 @@ public final class LandMapScreen extends GuildMenuScreen {
         minecraft.setScreen(new LandRulesScreen(menu, this, title));
     }
 
+    private void openMarket() {
+        minecraft.setScreen(new LandMarketScreen(menu, this, title));
+    }
+
     private void back() {
         if (minecraft.player != null && minecraft.gameMode != null) {
             minecraft.gameMode.handleInventoryButtonClick(menu.containerId, 0);
@@ -98,9 +120,17 @@ public final class LandMapScreen extends GuildMenuScreen {
     }
 
     private void buySelected() {
-        if (selected < 0 || cellState(selected) != LandView.UNOWNED || layout == null) return;
+        if (selected < 0 || layout == null) return;
+        if (cellState(selected) == LandView.SELF) {
+            minecraft.setScreen(new LandSellScreen(menu, this, title, selected));
+            return;
+        }
         int[] chunk = chunkAt(selected);
-        NeoForgeNetwork.sendBuyLand(chunk[0], chunk[1]);
+        if (listings.containsKey(selected)) {
+            NeoForgeNetwork.sendLandSale(3, chunk[0], chunk[1], 0);
+        } else if (cellState(selected) == LandView.UNOWNED) {
+            NeoForgeNetwork.sendBuyLand(chunk[0], chunk[1]);
+        }
     }
 
     private void updateBuyButton() {
@@ -109,13 +139,34 @@ public final class LandMapScreen extends GuildMenuScreen {
         long coins = view.getLong("coins");
         int owned = view.getInt("owned");
         int max = view.getInt("max");
-        boolean unowned = selected >= 0 && cellState(selected) == LandView.UNOWNED;
-        boolean withinLimit = max <= 0 || owned < max;
-        boolean affordable = price <= 0 || coins >= price;
-        buyButton.active = unowned && withinLimit && affordable;
-        buyButton.setMessage(Component.literal(price > 0
-                ? "購入 (" + Numbers.format(price) + " GC)"
-                : (price == 0 ? "購入 (無料)" : "購入")));
+        if (selected < 0) {
+            buyButton.setMessage(Component.literal("チャンクを選択"));
+            buyButton.active = false;
+            return;
+        }
+        byte cell = cellState(selected);
+        Listing listing = listings.get(selected);
+        if (cell == LandView.SELF) {
+            buyButton.setMessage(Component.literal(listing != null ? "売却（出品中）" : "売却"));
+            buyButton.active = true;
+            return;
+        }
+        if (listing != null) {
+            buyButton.setMessage(Component.literal("購入 (" + Numbers.format(listing.price) + " GC)"));
+            buyButton.active = listing.price <= 0 || coins >= listing.price;
+            return;
+        }
+        if (cell == LandView.UNOWNED) {
+            boolean withinLimit = max <= 0 || owned < max;
+            boolean affordable = price <= 0 || coins >= price;
+            buyButton.setMessage(Component.literal(price > 0
+                    ? "購入 (" + Numbers.format(price) + " GC)"
+                    : (price == 0 ? "購入 (無料)" : "購入")));
+            buyButton.active = withinLimit && affordable;
+            return;
+        }
+        buyButton.setMessage(Component.literal("購入できません"));
+        buyButton.active = false;
     }
 
     private byte cellState(int index) {
@@ -136,7 +187,7 @@ public final class LandMapScreen extends GuildMenuScreen {
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderTransparentBackground(graphics);
         int titleY = 6;
-        int titleWidth = Math.max(40, layout.contentWidth() - rulesButtonWidth() - 6);
+        int titleWidth = Math.max(40, layout.contentWidth() - rulesButtonWidth() * 2 - 12);
         graphics.drawString(font, fit("土地保護 - チャンク購入", titleWidth),
                 layout.contentLeft(), titleY, 0xFFFFFF);
         String dim = view.getString("dim");
@@ -158,11 +209,18 @@ public final class LandMapScreen extends GuildMenuScreen {
         }
         if (hovered >= 0 && hasView()) {
             int[] chunk = chunkAt(hovered);
-            String state = switch (cellState(hovered)) {
-                case LandView.SELF -> "所有: 自分";
-                case LandView.OTHER -> "所有: " + view.getCompound("owners").getString(Integer.toString(hovered));
-                default -> "未購入: " + Numbers.format(view.getLong("price")) + " GC";
-            };
+            Listing listing = listings.get(hovered);
+            String state;
+            if (listing != null) {
+                state = "出品中: " + Numbers.format(listing.price) + " GC（" + listing.seller() + "）";
+            } else {
+                state = switch (cellState(hovered)) {
+                    case LandView.SELF -> "所有: 自分" + (sellPrices.length > hovered && sellPrices[hovered] > 0
+                            ? " / 売却額: " + Numbers.format(sellPrices[hovered]) + " GC" : "");
+                    case LandView.OTHER -> "所有: " + view.getCompound("owners").getString(Integer.toString(hovered));
+                    default -> "未購入: " + Numbers.format(view.getLong("price")) + " GC";
+                };
+            }
             graphics.renderTooltip(font, Component.literal("チャンク (" + chunk[0] + ", " + chunk[1] + ")  " + state),
                     mouseX, mouseY);
         }
@@ -199,6 +257,10 @@ public final class LandMapScreen extends GuildMenuScreen {
                 graphics.fill(x, bottom - 2, right, bottom, COLOR_SELECTED);
                 graphics.fill(x, y, x + 2, bottom, COLOR_SELECTED);
                 graphics.fill(right - 2, y, right, bottom, COLOR_SELECTED);
+            }
+            // A small gold square marks chunks offered for sale.
+            if (listings.containsKey(index) && layout.cell() >= 10) {
+                graphics.fill(right - 5, y + 2, right - 2, y + 5, 0xFFFFD700);
             }
         }
         // Mark the player's own chunk (the grid center).

@@ -127,11 +127,6 @@ public final class Platform {
         b().onCanUseEntity(handler);
     }
 
-    /** Called after the server ticks a player (land entry checks). */
-    public static void onPlayerTick(Consumer<ServerPlayer> handler) {
-        b().onPlayerTick(handler);
-    }
-
     /** Called when a player disconnects. */
     public static void onPlayerLeave(Consumer<ServerPlayer> handler) {
         b().onPlayerLeave(handler);
@@ -215,8 +210,6 @@ public final class Platform {
         void onCanUse(BlockUsePermissionHandler handler);
 
         void onCanUseEntity(EntityUsePermissionHandler handler);
-
-        void onPlayerTick(Consumer<ServerPlayer> handler);
 
         void onPlayerLeave(Consumer<ServerPlayer> handler);
 

@@ -30,8 +30,35 @@ public final class GuildPersistentState extends SavedData {
     public final List<CompoundTag> unreadableAuctions = new ArrayList<>();
     /** Purchased land, keyed by "dimension|chunkX|chunkZ" to the owner UUID. */
     public final Map<String, UUID> landOwners = new LinkedHashMap<>();
+    /** Chunks currently offered for sale by their owner. */
+    public final Map<String, LandListing> landListings = new LinkedHashMap<>();
+    /** Price each chunk was bought for; the instant-sell payout is a percentage of it. */
+    public final Map<String, Long> landPaid = new LinkedHashMap<>();
     /** Next auction listing id to hand out. */
     public long nextAuctionId = 1;
+
+    /** A chunk a player offers to other players at a fixed price. */
+    public static final class LandListing {
+        public final String dimension;
+        public final int chunkX;
+        public final int chunkZ;
+        public final UUID seller;
+        public final long price;
+        public final long listedAt;
+
+        public LandListing(String dimension, int chunkX, int chunkZ, UUID seller, long price, long listedAt) {
+            this.dimension = dimension;
+            this.chunkX = chunkX;
+            this.chunkZ = chunkZ;
+            this.seller = seller;
+            this.price = price;
+            this.listedAt = listedAt;
+        }
+
+        public String key() {
+            return dimension + "|" + chunkX + "|" + chunkZ;
+        }
+    }
 
     public PlayerGuildData get(UUID uuid) {
         return players.computeIfAbsent(uuid, ignored -> new PlayerGuildData());
@@ -96,6 +123,23 @@ public final class GuildPersistentState extends SavedData {
             }
         }
         nbt.put("LandOwners", landNbt);
+        ListTag listingNbt = new ListTag();
+        for (LandListing listing : landListings.values()) {
+            CompoundTag tag = new CompoundTag();
+            tag.putString("Dim", listing.dimension);
+            tag.putInt("X", listing.chunkX);
+            tag.putInt("Z", listing.chunkZ);
+            tag.putUUID("Seller", listing.seller);
+            tag.putLong("Price", Math.max(0, listing.price));
+            tag.putLong("ListedAt", listing.listedAt);
+            listingNbt.add(tag);
+        }
+        nbt.put("LandListings", listingNbt);
+        CompoundTag paidNbt = new CompoundTag();
+        for (Map.Entry<String, Long> entry : landPaid.entrySet()) {
+            paidNbt.putLong(entry.getKey(), Math.max(0, entry.getValue()));
+        }
+        nbt.put("LandPaid", paidNbt);
         nbt.putLong("NextAuctionId", Math.max(1, nextAuctionId));
         return nbt;
     }
@@ -145,6 +189,21 @@ public final class GuildPersistentState extends SavedData {
                     || !land.contains("Z", Tag.TAG_INT) || !land.contains("Owner")) continue;
             state.landOwners.put(land.getString("Dim") + "|" + land.getInt("X") + "|" + land.getInt("Z"),
                     land.getUUID("Owner"));
+        }
+        ListTag listingNbt = nbt.getList("LandListings", Tag.TAG_COMPOUND);
+        for (int i = 0; i < listingNbt.size(); i++) {
+            CompoundTag tag = listingNbt.getCompound(i);
+            if (!tag.contains("Dim", Tag.TAG_STRING) || !tag.contains("X", Tag.TAG_INT)
+                    || !tag.contains("Z", Tag.TAG_INT) || !tag.contains("Seller")) continue;
+            String key = tag.getString("Dim") + "|" + tag.getInt("X") + "|" + tag.getInt("Z");
+            // A listing without an owner would let a stale entry survive forever.
+            if (!tag.getUUID("Seller").equals(state.landOwners.get(key))) continue;
+            state.landListings.put(key, new LandListing(tag.getString("Dim"), tag.getInt("X"), tag.getInt("Z"),
+                    tag.getUUID("Seller"), Math.max(0, tag.getLong("Price")), tag.getLong("ListedAt")));
+        }
+        CompoundTag paidNbt = nbt.getCompound("LandPaid");
+        for (String key : paidNbt.getAllKeys()) {
+            state.landPaid.put(key, Math.max(0, paidNbt.getLong(key)));
         }
         state.nextAuctionId = Math.max(1, nbt.getLong("NextAuctionId"));
         return state;
